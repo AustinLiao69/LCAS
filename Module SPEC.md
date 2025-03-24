@@ -4,6 +4,8 @@
 1-1. 記帳資料儲存：儲存使用者A與B的記帳資料。
    
 3. GAS (Google Apps Script) 模組
+
+   
 2-1. Webhook 模組：接收來自 LINE Bot 的請求，並將資料寫入 Google Sheet 或回傳訊息。
 2-2. 記帳處理模組：解析來自 LINE Chatbot 的記帳指令，將資料儲存到 Google Sheet。
 2-3. 排程與提醒功能：設置定期任務（如生成報表、記帳提醒等）。
