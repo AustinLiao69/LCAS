@@ -1,10 +1,10 @@
-1.0	系統設計
-1.1	設計LINE Chatbot輸入格式
-1.2	設計GAS功能模組
-1.3	設計使用者輸入LINE訊息格式
-1.4	設計使用者與AI互動方式
+1.0	Preliminary study
+1.1	調查市面上記帳APP功能
+1.2     研究各AI API方案
+1.3	設計系統架構
+1.4	使用者訪談
 	
-2.1	設計GoogleSheet格式
+2.1	設計Google Sheet格式
 2.1.1	設定使用者A表單
 2.1.1.1	設定00.科目代碼
 2.1.1.2	設定01.總帳
@@ -12,7 +12,7 @@
 2.1.1.4	設定03.每週收支
 2.1.1.5	設定04.每月收支
 	
-3.0	開發GAS功能
+3.0	開發GAS模組
 3.1	記帳處理模組
 3.2	Webhook模組
 3.3	資料分配模組
@@ -23,16 +23,19 @@
 3.8	AI數據提取模組
 	
 4.0	串接AI分析模組
-4.1	研究各AIAPI串接方式
+4.1	研究各AI API串接方式
 4.2	設計AI分析模組API與GAS互動
-4.3	設計LINEChatbot互動
+4.3	設計LINE Chatbot互動
 4.4	設計AI分析結果的呈現格式
 	
-5.0	部署LINEChatbot與LINEOA
-5.1	設定LINEOA
+5.0	部署LINE Chatbot與LINE OA
+5.1	設定LINE OA
 5.2	啟用Webhook
 5.3	設定自動提醒
-5.4	設定LINEChatbot呼叫AI訊息格式
+5.4	設定LINE Chatbot呼叫AI訊息格式
+5.5     設定LINE Chatbot輸入訊息格式
 	
-6.0	系統測試
-6.1	測試多人使用情境
+6.0	測試
+6.1	SIT
+6.2	UAT
+6.3	Beta test
