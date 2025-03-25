@@ -1,0 +1,24 @@
+1.0 系統設計	https://github.com/AustinLiao69/skills-copilot-codespaces-vscode/issues/2
+1.1 設計Google Sheet格式	https://github.com/AustinLiao69/LCAS/issues/1
+1.1.1 設定使用者A表單
+1.1.1.1設定00.科目代碼
+1.1.1.2 設定01.總帳欄
+1.1.1.3 設定02.綜合收支
+1.2 設計LINE Chatbot輸入格式	https://github.com/AustinLiao69/LCAS/issues/2
+1.3 設計GAS功能模組	https://github.com/AustinLiao69/skills-copilot-codespaces-vscode/issues/1
+1.4 設計使用者輸入LINE訊息格式	https://github.com/AustinLiao69/LCAS/issues/23
+2.0 GAS後端功能開發	https://github.com/AustinLiao69/LCAS/issues/3
+2.1 記帳處理模組	https://github.com/AustinLiao69/LCAS/issues/4
+2.2 Webhook 模組	https://github.com/AustinLiao69/LCAS/issues/5
+2.3 資料分配模組	https://github.com/AustinLiao69/LCAS/issues/6
+2.4 主報表合併模組	https://github.com/AustinLiao69/LCAS/issues/7
+2.5 排程模組	https://github.com/AustinLiao69/LCAS/issues/16
+2.6 報表生成模組	https://github.com/AustinLiao69/LCAS/issues/20
+2.7 查詢模組	https://github.com/AustinLiao69/LCAS/issues/21
+2.8 報表分析模組	https://github.com/AustinLiao69/LCAS/issues/22
+4.0 LINE Chatbot 部署與設定	https://github.com/AustinLiao69/LCAS/issues/8
+4.1 設定 LINE Official Account	https://github.com/AustinLiao69/LCAS/issues/9
+4.2 啟用 Webhook	https://github.com/AustinLiao69/LCAS/issues/10
+4.3 設定自動提醒	https://github.com/AustinLiao69/LCAS/issues/15
+6.0 系統測試	https://github.com/AustinLiao69/LCAS/issues/17
+6.1 測試多人使用情境	https://github.com/AustinLiao69/LCAS/issues/11
