@@ -1,6 +1,6 @@
-# Auto_Accounting_System
+# LCAS
 
-Module SPEC
+Architecture
 1. Google Sheet 模組
    1-1. 記帳資料儲存：儲存使用者A與B的記帳資料。
    
