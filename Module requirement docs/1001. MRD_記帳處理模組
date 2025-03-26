@@ -21,8 +21,29 @@ MRD_記帳處理模組
 
 3.0 輸入/輸出規格（Input & Output Specifications）
 3.1 輸入
-- 收支項目：日期（Date），類別（Category），金額（Amount），備註（Notes）
-- 類別信息：類別名稱（Category Name），描述（Description）
+參照Header_General Ledger，需紀錄如下：
+1.  收支ID
+    格式為YYYYMMDD-當日流水號5碼，例：20250326-00001。在記帳時自動產生。
+2.  日期
+    格式為(YYYY/MM/DD)。例：2025/03/26。從LINE Chatbot抓取日期
+3.  時間    
+    格式為24小時制。例：14:03。從LINE Chatbot抓取日期
+4.  科目大項
+    請參考0002. Subject form 科目大項
+5.  科目代碼
+    請參考0002. Subject form 科目代碼
+6.  費用種類
+    分為刷卡、現金 2種
+7.  科目名稱
+    請參考0002. Subject form  科目名稱
+8.  登錄者
+    格式為LINE UID。擷取自LINE chatbot使用者ID
+9.  備註
+    其他須備註之文字
+10.  收入
+    收入填在這欄
+11. 支出
+    支出填在這欄
 
 3.2 輸出
 - 收支報表：按日、週、月、年匯總的收支報表
