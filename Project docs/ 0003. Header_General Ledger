@@ -14,7 +14,7 @@ Header_General Ledger
 6.  科目名稱
     請參考0002. Subject form  科目名稱
 7.  登錄者
-    格式為LINE UID。擷取來LINE chatbot使用者ID
+    格式為LINE UID。擷取自LINE chatbot使用者ID
 8.  備註
     其他須備註之文字
 9.  收入
