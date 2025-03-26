@@ -1,0 +1,89 @@
+/**
+ * 帳號管理模組
+ * 版本: 1.0.0
+ * 作者: AustinLiao69
+ */
+
+// 1. 定義全域變數
+var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+var accountsSheetName = "使用者帳號";
+var logSheetName = "錯誤日誌";
+
+// 2. 新增帳號
+function 新增帳號_1_0_0_AustinLiao69(username, password, role) {
+  console.log("Debug: 進入函數 新增帳號_1_0_0_AustinLiao69");
+  
+  try {
+    var sheet = spreadsheet.getSheetByName(accountsSheetName);
+    sheet.appendRow([username, password, role]);
+    console.log("Debug: 帳號新增成功: ", username);
+  } catch (error) {
+    console.error("Debug: 帳號新增失敗: ", error);
+    記錄錯誤日誌_1_0_0_AustinLiao69("帳號新增失敗", error);
+    重試機制_1_0_0_AustinLiao69(新增帳號_1_0_0_AustinLiao69, username, password, role);
+  }
+}
+
+// 3. 註銷帳號
+function 註銷帳號_1_0_0_AustinLiao69(username) {
+  console.log("Debug: 進入函數 註銷帳號_1_0_0_AustinLiao69");
+  
+  try {
+    var sheet = spreadsheet.getSheetByName(accountsSheetName);
+    var data = sheet.getDataRange().getValues();
+    for (var i = 0; i < data.length; i++) {
+      if (data[i][0] === username) {
+        sheet.deleteRow(i + 1);
+        console.log("Debug: 帳號註銷成功: ", username);
+        return;
+      }
+    }
+    throw new Error("帳號未找到: " + username);
+  } catch (error) {
+    console.error("Debug: 帳號註銷失敗: ", error);
+    記錄錯誤日誌_1_0_0_AustinLiao69("帳號註銷失敗", error);
+    重試機制_1_0_0_AustinLiao69(註銷帳號_1_0_0_AustinLiao69, username);
+  }
+}
+
+// 4. 帳號修改
+function 修改帳號_1_0_0_AustinLiao69(username, newPassword, newRole) {
+  console.log("Debug: 進入函數 修改帳號_1_0_0_AustinLiao69");
+  
+  try {
+    var sheet = spreadsheet.getSheetByName(accountsSheetName);
+    var data = sheet.getDataRange().getValues();
+    for (var i = 0; i < data.length; i++) {
+      if (data[i][0] === username) {
+        sheet.getRange(i + 1, 2).setValue(newPassword);
+        sheet.getRange(i + 1, 3).setValue(newRole);
+        console.log("Debug: 帳號修改成功: ", username);
+        return;
+      }
+    }
+    throw new Error("帳號未找到: " + username);
+  } catch (error) {
+    console.error("Debug: 帳號修改失敗: ", error);
+    記錄錯誤日誌_1_0_0_AustinLiao69("帳號修改失敗", error);
+    重試機制_1_0_0_AustinLiao69(修改帳號_1_0_0_AustinLiao69, username, newPassword, newRole);
+  }
+}
+
+// 5. 帳號查詢
+function 查詢帳號_1_0_0_AustinLiao69(username) {
+  console.log("Debug: 進入函數 查詢帳號_1_0_0_AustinLiao69");
+  
+  try {
+    var sheet = spreadsheet.getSheetByName(accountsSheetName);
+    var data = sheet.getDataRange().getValues();
+    for (var i = 0; i < data.length; i++) {
+      if (data[i][0] === username) {
+        console.log("Debug: 查詢結果: ", data[i]);
+        return data[i];
+      }
+    }
+    throw new Error("帳號未找到: " + username);
+  } catch (error) {
+    console.error("Debug: 帳號查詢失敗: ", error);
+    記錄錯誤日誌_1_0_0_AustinLiao69("帳號查詢失敗", error);
+    重試機制_1_0_0_AustinLiao69(查詢帳號_1_0_0* ▋
