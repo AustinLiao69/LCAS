@@ -1,0 +1,69 @@
+/**
+ * 報表合併模組
+ * 版本: 1.0.0
+ * 作者: AustinLiao69
+ */
+
+// 1. 定義全域變數
+var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+
+// 2. 報表匯總
+function 報表匯總_1_0_0_AustinLiao69(sourceSheets) {
+  console.log("Debug: 進入函數 報表匯總_1_0_0_AustinLiao69");
+  var combinedData = [];
+  
+  sourceSheets.forEach(function(sheetName) {
+    var sheet = spreadsheet.getSheetByName(sheetName);
+    var data = sheet.getDataRange().getValues();
+    combinedData = combinedData.concat(data);
+  });
+  
+  console.log("Debug: 報表匯總結果: ", combinedData);
+  return combinedData;
+}
+
+// 3. 數據清洗
+function 數據清洗_1_0_0_AustinLiao69(data) {
+  console.log("Debug: 進入函數 數據清洗_1_0_0_AustinLiao69");
+  var cleanedData = data.filter(function(row) {
+    // 假設數據清洗是去除空行
+    return row.some(function(cell) { return cell !== ""; });
+  });
+  
+  console.log("Debug: 數據清洗結果: ", cleanedData);
+  return cleanedData;
+}
+
+// 4. 自動化合併
+function 自動化合併_1_0_0_AustinLiao69(sourceSheets, targetSheetName) {
+  console.log("Debug: 進入函數 自動化合併_1_0_0_AustinLiao69");
+  
+  var combinedData = 報表匯總_1_0_0_AustinLiao69(sourceSheets);
+  var cleanedData = 數據清洗_1_0_0_AustinLiao69(combinedData);
+  
+  var targetSheet = spreadsheet.getSheetByName(targetSheetName);
+  if (!targetSheet) {
+    targetSheet = spreadsheet.insertSheet(targetSheetName);
+  }
+  
+  targetSheet.clear();
+  targetSheet.getRange(1, 1, cleanedData.length, cleanedData[0].length).setValues(cleanedData);
+  
+  console.log("Debug: 自動化合併完成");
+}
+
+// 5. 錯誤處理與重試機制
+function 錯誤處理與重試機制_1_0_0_AustinLiao69(operation, data) {
+  console.log("Debug: 進入函數 錯誤處理與重試機制_1_0_0_AustinLiao69");
+  
+  var maxRetries = 3;
+  for (var i = 0; i < maxRetries; i++) {
+    try {
+      operation(data);
+      console.log("Debug: 操作成功");
+      break;
+    } catch (error) {
+      console.error("Debug: 操作失敗，次數: ", i + 1, " 錯誤: ", error);
+    }
+  }
+}
