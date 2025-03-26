@@ -1,0 +1,86 @@
+/**
+ * 資料分配模組
+ * 版本: 1.0.0
+ * 作者: AustinLiao69
+ */
+
+// 1. 定義全域變數
+var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+
+// 2. 數據分類
+function 數據分類_1_0_0_AustinLiao69(data, rules) {
+  console.log("Debug: 進入函數 數據分類_1_0_0_AustinLiao69");
+  var classifiedData = {};
+  
+  data.forEach(function(record) {
+    var category = classifyRecord_1_0_0_AustinLiao69(record, rules);
+    if (!classifiedData[category]) {
+      classifiedData[category] = [];
+    }
+    classifiedData[category].push(record);
+  });
+  
+  console.log("Debug: 數據分類結果: ", classifiedData);
+  return classifiedData;
+}
+
+// 3. 數據分發
+function 數據分發_1_0_0_AustinLiao69(classifiedData) {
+  console.log("Debug: 進入函數 數據分發_1_0_0_AustinLiao69");
+  
+  for (var category in classifiedData) {
+    var sheet = spreadsheet.getSheetByName(category);
+    if (!sheet) {
+      sheet = spreadsheet.insertSheet(category);
+    }
+    var data = classifiedData[category];
+    data.forEach(function(record) {
+      sheet.appendRow(record);
+    });
+    console.log("Debug: 數據已分發到工作表: ", category);
+  }
+}
+
+// 4. 動態配置規則
+function 動態配置規則_1_0_0_AustinLiao69() {
+  console.log("Debug: 進入函數 動態配置規則_1_0_0_AustinLiao69");
+  
+  // 假設規則存儲在名為"規則"的工作表中
+  var rulesSheet = spreadsheet.getSheetByName("規則");
+  var rules = rulesSheet.getDataRange().getValues();
+  
+  console.log("Debug: 獲取的規則: ", rules);
+  return rules;
+}
+
+// 5. 錯誤處理與重試機制
+function 錯誤處理與重試機制_1_0_0_AustinLiao69(operation, data) {
+  console.log("Debug: 進入函數 錯誤處理與重試機制_1_0_0_AustinLiao69");
+  
+  var maxRetries = 3;
+  for (var i = 0; i < maxRetries; i++) {
+    try {
+      operation(data);
+      console.log("Debug: 操作成功");
+      break;
+    } catch (error) {
+      console.error("Debug: 操作失敗，次數: ", i + 1, " 錯誤: ", error);
+    }
+  }
+}
+
+// 輔助函數: 根據規則對記錄進行分類
+function classifyRecord_1_0_0_AustinLiao69(record, rules) {
+  console.log("Debug: 進入函數 classifyRecord_1_0_0_AustinLiao69");
+  
+  // 假設根據第一列的值進行分類
+  for (var i = 0; i < rules.length; i++) {
+    if (record[0] === rules[i][0]) {
+      console.log("Debug: 記錄分類結果: ", rules[i][1]);
+      return rules[i][1];
+    }
+  }
+  
+  console.log("Debug: 無匹配分類，設置為'未分類'");
+  return "未分類";
+}
