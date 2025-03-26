@@ -1,0 +1,90 @@
+/**
+ * 記帳處理模組
+ * 版本: 1.0.0
+ * 作者: AustinLiao69
+ */
+
+// 1. 定義全域變數
+var sheetName = "記帳記錄";
+var categorySheetName = "類別";
+var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+
+// 2. 新增收支項目
+function 新增收支項目_1_0_0_AustinLiao69(date, category, amount, notes) {
+  console.log("Debug: 進入函數 新增收支項目_1_0_0_AustinLiao69");
+  var sheet = spreadsheet.getSheetByName(sheetName);
+  sheet.appendRow([date, category, amount, notes]);
+  console.log("Debug: 收支項目已新增: ", date, category, amount, notes);
+}
+
+// 3. 編輯收支項目
+function 編輯收支項目_1_0_0_AustinLiao69(row, date, category, amount, notes) {
+  console.log("Debug: 進入函數 編輯收支項目_1_0_0_AustinLiao69");
+  var sheet = spreadsheet.getSheetByName(sheetName);
+  sheet.getRange(row, 1, 1, 4).setValues([[date, category, amount, notes]]);
+  console.log("Debug: 收支項目已編輯: ", row, date, category, amount, notes);
+}
+
+// 4. 刪除收支項目
+function 刪除收支項目_1_0_0_AustinLiao69(row) {
+  console.log("Debug: 進入函數 刪除收支項目_1_0_0_AustinLiao69");
+  var sheet = spreadsheet.getSheetByName(sheetName);
+  sheet.deleteRow(row);
+  console.log("Debug: 收支項目已刪除: ", row);
+}
+
+// 5. 新增類別
+function 新增類別_1_0_0_AustinLiao69(categoryName, description) {
+  console.log("Debug: 進入函數 新增類別_1_0_0_AustinLiao69");
+  var sheet = spreadsheet.getSheetByName(categorySheetName);
+  sheet.appendRow([categoryName, description]);
+  console.log("Debug: 類別已新增: ", categoryName, description);
+}
+
+// 6. 編輯類別
+function 編輯類別_1_0_0_AustinLiao69(row, categoryName, description) {
+  console.log("Debug: 進入函數 編輯類別_1_0_0_AustinLiao69");
+  var sheet = spreadsheet.getSheetByName(categorySheetName);
+  sheet.getRange(row, 1, 1, 2).setValues([[categoryName, description]]);
+  console.log("Debug: 類別已編輯: ", row, categoryName, description);
+}
+
+// 7. 刪除類別
+function 刪除類別_1_0_0_AustinLiao69(row) {
+  console.log("Debug: 進入函數 刪除類別_1_0_0_AustinLiao69");
+  var sheet = spreadsheet.getSheetByName(categorySheetName);
+  sheet.deleteRow(row);
+  console.log("Debug: 類別已刪除: ", row);
+}
+
+// 8. 批量導入收支數據
+function 批量導入_1_0_0_AustinLiao69(dataArray) {
+  console.log("Debug: 進入函數 批量導入_1_0_0_AustinLiao69");
+  var sheet = spreadsheet.getSheetByName(sheetName);
+  sheet.getRange(sheet.getLastRow() + 1, 1, dataArray.length, dataArray[0].length).setValues(dataArray);
+  console.log("Debug: 收支數據已批量導入");
+}
+
+// 9. 數據驗證
+function 數據驗證_1_0_0_AustinLiao69(data) {
+  console.log("Debug: 進入函數 數據驗證_1_0_0_AustinLiao69");
+  // 實現數據驗證邏輯
+  if (!data.date || !data.category || isNaN(data.amount)) {
+    console.error("Debug: 數據格式錯誤: ", data);
+    return false;
+  }
+  console.log("Debug: 數據驗證通過: ", data);
+  return true;
+}
+
+// 10. 自動分類
+function 自動分類_1_0_0_AustinLiao69(data) {
+  console.log("Debug: 進入函數 自動分類_1_0_0_AustinLiao69");
+  // 根據規則進行自動分類
+  var category = "未分類";
+  if (data.notes.includes("餐飲")) {
+    category = "餐飲";
+  }
+  console.log("Debug: 自動分類結果: ", category);
+  return category;
+}
