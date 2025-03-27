@@ -1,62 +1,58 @@
-MRD_記帳處理模組
+// 記帳處理模組 v1_0_0_Chatty
 
-1.0 模組概述（Module Overview）
-記帳處理模組的主要用途是處理使用者的記帳操作。此模組負責記錄各種收支項目，確保數據的準確性和完整性，並根據 LINE Chatbot 傳入的訊息進行自動分類與存儲。它在整體系統中扮演核心角色，處理所有與記帳相關的業務邏輯，並將數據存儲於 Google Sheets 中，供後續查詢和分析使用。
+function doPost(e) {
+  // 1. 解析接收到的 JSON 數據
+  var requestData = JSON.parse(e.postData.contents);
+  console.log("[DEBUG] 接收到的數據:", requestData);
 
-2.0 功能需求（Functional Requirements）
-2.1 記帳操作
-- 新增收支項目：使用者透過 LINE Chatbot 記錄一筆收支項目，包括日期、時間、科目、金額、登錄者（LINE UID）、備註等資訊。
-- 自動生成收支 ID：格式為 YYYYMMDD-當日流水號 5 碼（例：20250326-00001）。
-- 自動分類：根據 LINE Chatbot 傳入的訊息，匹配適當的科目大項與科目代碼。
+  // 2. 定義 Google Sheet
+  var sheet = SpreadsheetApp.openById("1TSn-X-8B_PDUseZZPbbc0AhK55E80DBXJqkPRtStOUY").getSheetByName("01. 總帳");
 
-2.2 類別管理
-- 根據 "00. 科目代碼" 工作表自動維護科目大項、科目代碼與科目名稱的對應關係。
-- 支援新增、修改、刪除科目代碼的管理功能。
+  // 3. 產生收支 ID
+  var date = new Date();
+  var dateString = Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyyMMdd");
+  var lastRow = sheet.getLastRow();
+  var nextId = lastRow > 1 ? parseInt(sheet.getRange(lastRow, 1).getValue().split("-")[1]) + 1 : 1;
+  var formattedId = dateString + "-" + ("00000" + nextId).slice(-5);
+  console.log("[DEBUG] 產生的收支ID:", formattedId);
 
-2.3 其他功能
-- 資料驗證：
-  - 確保日期、時間格式正確。
-  - 金額不得為負數，收入與支出欄位只能填一個。
-  - 確保科目代碼存在於 "00. 科目代碼" 工作表。
-- 自動補全：若 LINE Chatbot 傳入的訊息缺少某些欄位，則嘗試自動填充。
-- 統計報表生成：按日、週、月、年匯總收支數據。
+  // 4. 取得 LINE 傳入的資料
+  var transactionDate = requestData.date;
+  var transactionTime = requestData.time;
+  var categoryCode = requestData.category_code;
+  var amount = requestData.amount;
+  var paymentType = requestData.payment_type;
+  var userId = requestData.user_id;
+  var remark = requestData.remark || "";
 
-3.0 輸入/輸出規格（Input & Output Specifications）
-3.1 輸入
-參照 "01. 總帳"，需紀錄如下：
-1.  收支ID（YYYYMMDD-00001）
-2.  日期（YYYY/MM/DD），來自 LINE Chatbot
-3.  時間（HH:mm），來自 LINE Chatbot
-4.  科目大項（依照 0002. Subject form 提取）
-5.  科目代碼（依照 0002. Subject form 提取）
-6.  費用種類（刷卡/現金）
-7.  科目名稱（依照 0002. Subject form 提取）
-8.  登錄者（LINE UID）
-9.  備註（可選）
-10.  收入（收入金額填於此）
-11.  支出（支出金額填於此）
+  // 5. 驗證輸入數據
+  if (!transactionDate || !transactionTime || !categoryCode || !amount || !userId) {
+    console.log("[DEBUG] 數據驗證失敗，缺少必要欄位");
+    return ContentService.createTextOutput("ERROR: 缺少必要欄位").setMimeType(ContentService.MimeType.TEXT);
+  }
 
-3.2 輸出
-- 收支報表：按日、週、月、年匯總的收支報表。
-- 分類統計：按科目分類統計收支數據。
-- 原始數據：儲存在 "01. 總帳" 工作表，供後續查詢與分析。
+  // 6. 查找科目大項
+  var categorySheet = SpreadsheetApp.openById("1TSn-X-8B_PDUseZZPbbc0AhK55E80DBXJqkPRtStOUY").getSheetByName("00. 科目代碼");
+  var categoryData = categorySheet.getDataRange().getValues();
+  var categoryName = "未知科目";
+  var majorCategory = "未知大項";
 
-4.0 錯誤處理與例外狀況（Error Handling & Edge Cases）
-- 數據格式錯誤：提示使用者輸入正確的數據格式，如日期格式錯誤、金額為非數字等。
-- 重複數據：檢測到相同的收支 ID 時，提示使用者確認是否要覆蓋或跳過。
-- 類別不存在：當科目代碼在 "00. 科目代碼" 中不存在時，提示使用者新增該科目或選擇其他科目。
-- 缺少必要欄位：若 LINE Chatbot 傳入訊息缺少關鍵欄位（如日期、金額），則提示使用者補充或使用預設值。
+  for (var i = 1; i < categoryData.length; i++) {
+    if (categoryData[i][0] == categoryCode) {
+      categoryName = categoryData[i][1];
+      majorCategory = categoryCode.substring(0, 3);
+      break;
+    }
+  }
+  console.log("[DEBUG] 科目名稱:", categoryName, "| 科目大項:", majorCategory);
 
-5.0 測試計畫（Test Plan）
-5.1 單元測試
-- 測試各個功能模組，如新增、編輯、刪除收支項目，確保其正常運行。
-- 測試資料驗證邏輯，確保數據正確無誤。
+  // 7. 判斷收入或支出
+  var income = paymentType === "收入" ? amount : "";
+  var expense = paymentType === "支出" ? amount : "";
 
-5.2 整合測試
-- 測試記帳處理模組與 Google Sheets、LINE Chatbot 的整合，確保數據在各模組間的流轉正確無誤。
+  // 8. 寫入 Google Sheet
+  sheet.appendRow([formattedId, transactionDate, transactionTime, majorCategory, categoryCode, paymentType, categoryName, userId, remark, income, expense]);
+  console.log("[DEBUG] 記帳成功，寫入資料:", formattedId, transactionDate, transactionTime, majorCategory, categoryCode, paymentType, categoryName, userId, remark, income, expense);
 
-5.3 使用者測試
-- 邀請使用者進行測試，收集反饋意見，並進行相應的改進。
-
-5.4 邊界測試
-- 測試各種邊界條件，如最大/最小數值、空值、特殊字符等，確保系統在這些情況下的穩定性。
+  return ContentService.createTextOutput("SUCCESS").setMimeType(ContentService.MimeType.TEXT);
+}
