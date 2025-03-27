@@ -1,40 +1,89 @@
-### 1.0 模組概論 (Module Overview)
+
+
+1.0 模組概論 (Module Overview)
+
 Webhook 模組的主要用途是接收來自 LINE Messaging API 的 Webhook 事件，並將這些事件轉發至記帳處理模組進行解析與記錄。該模組負責接收、驗證和轉發 LINE 訊息，確保數據的即時性與正確性。在整體系統中，它是記帳流程的觸發點，為記帳處理模組提供數據支持。
 
-### 2.0 功能需求 (Functional Requirements)
-#### 2.1 接收 Webhook 事件
-- 接收來自 LINE Messaging API 的 Webhook 事件，包括但不限於文字訊息。
 
-#### 2.2 驗證 Webhook 請求
-- 驗證 Webhook 請求的合法性，確保請求來源為 LINE Messaging API，防止惡意攻擊。
+---
 
-#### 2.3 轉發 Webhook 數據至記帳處理模組
-- 解析 LINE 訊息，並將訊息數據傳送至記帳處理模組進行處理。
-- 如果訊息中的秘書名稱沒有正確對應到完整秘書代碼，則向用戶提供標準秘書大項，依序進行主項和子項選擇。
-- 如果用戶在沒有正確秘書名稱的情況下選完正確的子項，將將原來的輸入加入秘書代碼表中的同義詞列。
+2.0 功能需求 (Functional Requirements)
 
-#### 2.4 確認回應
-- 在成功處理 Webhook 事件後，向 LINE Messaging API 回應 200 OK，確保訊息處理狀態。
+2.1 接收 Webhook 事件
 
-### 3.0 輸入/輸出規格 (Input & Output Specifications)
-#### 3.1 輸入
-- **Webhook 請求**：
-  - 事件類型 (Event Type)：例如 `message`、`follow`、`unfollow` 等。
-  - 訊息內容 (Message Content)：包含訊息類型 (文字、貼圖、圖片等)。
-  - 用戶 ID (User ID)：識別 LINE 用戶。
-  - 時間戳 (Timestamp)：訊息發送時間。
+接收來自 LINE Messaging API 的 Webhook 事件，包括但不限於文字訊息。
 
-#### 3.2 輸出
-- **傳送至記帳處理模組**：
-  - 傳遞訊息內容及用戶 ID 給記帳處理模組，以解析記帳資訊。
-- **回應 LINE Messaging API**：
-  - 若處理成功，回應 HTTP 200 OK，否則回應錯誤代碼。
 
-### 4.0 錯誤處理與例外狀況 (Error Handling & Edge Cases)
-- **無效請求**：當 Webhook 請求來源不合法或驗證失敗時，記錄錯誤並回應 403 Forbidden。
-- **數據解析錯誤**：當收到非預期的數據格式時，記錄錯誤並回應 400 Bad Request。
-- **記帳處理模組無回應**：當記帳處理模組無法回應或發生錯誤時，記錄錯誤並重試傳送請求。
+2.2 驗證 Webhook 請求
 
-### 5.0 測試計畫 (Test Plan)
-同上，增加測試學習同義詞功能。
+驗證 Webhook 請求的合法性，確保請求來源為 LINE Messaging API，防止惡意攻擊。
+
+
+2.3 轉發 Webhook 數據至記帳處理模組
+
+解析 LINE 訊息，並將訊息數據傳送至記帳處理模組進行處理。
+
+如果訊息中的科目名稱沒有正確對應到完整科目代碼，則向用戶提供標準科目大項，依序進行主項和子項選擇。
+
+如果用戶在沒有正確科目名稱的情況下選完正確的子項，則將原來的輸入加入科目代碼表中的同義詞列。
+
+
+2.4 確認回應
+
+在成功處理 Webhook 事件後，向 LINE Messaging API 回應 200 OK，確保訊息處理狀態。
+
+
+---
+
+3.0 輸入/輸出規格 (Input & Output Specifications)
+
+3.1 輸入
+
+Webhook 請求：
+
+事件類型 (Event Type)：例如 message、follow、unfollow 等。
+
+訊息內容 (Message Content)：包含訊息類型 (文字、貼圖、圖片等)。
+
+用戶 ID (User ID)：識別 LINE 用戶。
+
+時間戳 (Timestamp)：訊息發送時間。
+
+
+
+3.2 輸出
+
+傳送至記帳處理模組：
+
+傳遞訊息內容及用戶 ID 給記帳處理模組，以解析記帳資訊。
+
+
+回應 LINE Messaging API：
+
+若處理成功，回應 HTTP 200 OK，否則回應錯誤代碼。
+
+
+
+
+---
+
+4.0 錯誤處理與例外狀況 (Error Handling & Edge Cases)
+
+無效請求：當 Webhook 請求來源不合法或驗證失敗時，記錄錯誤並回應 403 Forbidden。
+
+數據解析錯誤：當收到非預期的數據格式時，記錄錯誤並回應 400 Bad Request。
+
+記帳處理模組無回應：當記帳處理模組無法回應或發生錯誤時，記錄錯誤並重試傳送請求。
+
+
+
+---
+
+5.0 測試計畫 (Test Plan)
+
+測試 Webhook 事件的接收與轉發功能。
+
+測試數據驗證機制，確保不接受非法請求。
+
+測試學習科目同義詞功能，確保系統能記住用戶習慣用詞並正確對應科目代碼。
 
