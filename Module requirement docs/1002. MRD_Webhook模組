@@ -1,7 +1,7 @@
-### 1.0 模組概述（Module Overview）
-Webhook 模組的主要用途是接收來自 LINE Messaging API 的 Webhook 事件，並將這些事件轉發至記帳處理模組進行解析與記錄。該模組負責接收、驗證和轉發 LINE 訊息，確保數據的即時性與準確性。在整體系統中，它是記帳流程的觸發點，為記帳處理模組提供數據支持。
+### 1.0 模組概論 (Module Overview)
+Webhook 模組的主要用途是接收來自 LINE Messaging API 的 Webhook 事件，並將這些事件轉發至記帳處理模組進行解析與記錄。該模組負責接收、驗證和轉發 LINE 訊息，確保數據的即時性與正確性。在整體系統中，它是記帳流程的觸發點，為記帳處理模組提供數據支持。
 
-### 2.0 功能需求（Functional Requirements）
+### 2.0 功能需求 (Functional Requirements)
 #### 2.1 接收 Webhook 事件
 - 接收來自 LINE Messaging API 的 Webhook 事件，包括但不限於文字訊息。
 
@@ -10,45 +10,31 @@ Webhook 模組的主要用途是接收來自 LINE Messaging API 的 Webhook 事�
 
 #### 2.3 轉發 Webhook 數據至記帳處理模組
 - 解析 LINE 訊息，並將訊息數據傳送至記帳處理模組進行處理。
+- 如果訊息中的秘書名稱沒有正確對應到完整秘書代碼，則向用戶提供標準秘書大項，依序進行主項和子項選擇。
+- 如果用戶在沒有正確秘書名稱的情況下選完正確的子項，將將原來的輸入加入秘書代碼表中的同義詞列。
 
 #### 2.4 確認回應
 - 在成功處理 Webhook 事件後，向 LINE Messaging API 回應 200 OK，確保訊息處理狀態。
 
-### 3.0 輸入/輸出規格（Input & Output Specifications）
+### 3.0 輸入/輸出規格 (Input & Output Specifications)
 #### 3.1 輸入
 - **Webhook 請求**：
-  - 事件類型（Event Type）：例如 `message`、`follow`、`unfollow` 等。
-  - 訊息內容（Message Content）：包含訊息類型（文字、貼圖、圖片等）。
-  - 使用者 ID（User ID）：識別 LINE 使用者。
-  - 時間戳記（Timestamp）：訊息發送時間。
+  - 事件類型 (Event Type)：例如 `message`、`follow`、`unfollow` 等。
+  - 訊息內容 (Message Content)：包含訊息類型 (文字、貼圖、圖片等)。
+  - 用戶 ID (User ID)：識別 LINE 用戶。
+  - 時間戳 (Timestamp)：訊息發送時間。
 
 #### 3.2 輸出
 - **傳送至記帳處理模組**：
-  - 傳遞訊息內容及使用者 ID 給記帳處理模組，以解析記帳資訊。
+  - 傳遞訊息內容及用戶 ID 給記帳處理模組，以解析記帳資訊。
 - **回應 LINE Messaging API**：
   - 若處理成功，回應 HTTP 200 OK，否則回應錯誤代碼。
 
-### 4.0 錯誤處理與例外狀況（Error Handling & Edge Cases）
+### 4.0 錯誤處理與例外狀況 (Error Handling & Edge Cases)
 - **無效請求**：當 Webhook 請求來源不合法或驗證失敗時，記錄錯誤並回應 403 Forbidden。
 - **數據解析錯誤**：當收到非預期的數據格式時，記錄錯誤並回應 400 Bad Request。
 - **記帳處理模組無回應**：當記帳處理模組無法回應或發生錯誤時，記錄錯誤並重試傳送請求。
-- **LINE API 超時**：若無法即時回應 LINE API，則記錄錯誤並嘗試補償機制。
 
-### 5.0 測試計畫（Test Plan）
-#### 5.1 單元測試
-- 測試 Webhook 接收與驗證邏輯，確保僅處理來自 LINE API 的合法請求。
-- 測試 Webhook 數據轉發機制，確保能正確傳送至記帳處理模組。
-
-#### 5.2 整合測試
-- 測試 Webhook 模組與記帳處理模組的整合，確保訊息能正確解析並存入 Google Sheet。
-- 測試 Webhook 與 LINE API 的交互，確保回應正確。
-
-#### 5.3 使用者測試
-- 讓使用者透過 LINE Bot 傳送記帳訊息，測試 Webhook 是否能正確觸發記帳流程。
-
-#### 5.4 邊界測試
-- 測試大數據量請求，確保系統在高負載時的穩定性。
-- 測試各種異常情境，如惡意請求、無效 JSON、訊息格式錯誤等。
-
-此 Webhook 模組確保 LINE 訊息能順利傳遞至記帳處理模組，並提供完整的錯誤處理與測試計畫，確保系統穩定運作。
+### 5.0 測試計畫 (Test Plan)
+同上，增加測試學習同義詞功能。
 
