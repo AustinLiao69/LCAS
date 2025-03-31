@@ -1,1 +1,140 @@
+// 記帳處理模組_Book-keeping_v1_0_2_AustinLiao69
 
+// 1. 定義變數
+const sheetId = "1TSn-X-8B_PDUseZZPbbc0AhK55E80DBXJqkPRtStOUY";
+const sheetName = "01. 總帳";
+const codeSheetName = "00. 科目代碼";
+const debug = true;
+
+// 2. 初始函數
+function doPost(e) {
+  if (debug) {
+    Logger.log("doPost called");
+  }
+  
+  if (!e.postData || !e.postData.contents) {
+    const error = "Missing postData or contents";
+    if (debug) {
+      Logger.log("Error: " + error);
+    }
+    return ContentService.createTextOutput(JSON.stringify({ error })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  const data = JSON.parse(e.postData.contents);
+  const validatedData = validateData(data);
+  
+  if (validatedData.error) {
+    if (debug) {
+      Logger.log("Validation Error: " + validatedData.error);
+    }
+    return ContentService.createTextOutput(JSON.stringify({ error: validatedData.error })).setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  const recordId = generateRecordId();
+  const record = createRecord(recordId, validatedData);
+  
+  const sheet = SpreadsheetApp.openById(sheetId).getSheetByName(sheetName);
+  sheet.appendRow(record);
+  
+  if (debug) {
+    Logger.log("Record added: " + record);
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
+}
+
+// 3. 資料驗證函數
+function validateData(data) {
+  if (debug) {
+    Logger.log("validateData called with data: " + JSON.stringify(data));
+  }
+  
+  let error = null;
+  
+  if (!data.date || !isValidDate(data.date)) {
+    error = "Invalid date format";
+  } else if (!data.time || !isValidTime(data.time)) {
+    error = "Invalid time format";
+  } else if (!data.amount || data.amount <= 0) {
+    error = "Amount must be greater than zero";
+  } else if (!data.subItemCode || !isValidSubItemCode(data.subItemCode)) {
+    error = "Invalid sub-item code";
+  }
+  
+  if (error) {
+    return { error };
+  }
+  
+  return data;
+}
+
+function isValidDate(date) {
+  return /^\d{4}\/\d{2}\/\d{2}$/.test(date);
+}
+
+function isValidTime(time) {
+  return /^\d{2} \d{2}$/.test(time);
+}
+
+function isValidSubItemCode(code) {
+  const codeSheet = SpreadsheetApp.openById(sheetId).getSheetByName(codeSheetName);
+  const codes = codeSheet.getRange("A:A").getValues().flat();
+  return codes.includes(code);
+}
+
+// 4. 生成收支 ID 函數
+function generateRecordId() {
+  const date = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMdd");
+  const sheet = SpreadsheetApp.openById(sheetId).getSheetByName(sheetName);
+  const lastRow = sheet.getLastRow();
+  const lastId = sheet.getRange(lastRow, 1).getValue();
+  
+  let serialNumber = "00001";
+  if (lastId.startsWith(date)) {
+    const lastSerial = parseInt(lastId.split("-")[1], 10);
+    serialNumber = ("00000" + (lastSerial + 1)).slice(-5);
+  }
+  
+  return `${date}-${serialNumber}`;
+}
+
+// 5. 建立記錄函數
+function createRecord(recordId, data) {
+  if (debug) {
+    Logger.log("createRecord called with recordId: " + recordId + " and data: " + JSON.stringify(data));
+  }
+  
+  return [
+    recordId,
+    data.userType,
+    data.date,
+    data.time,
+    data.mainItemCode,
+    data.subItemCode,
+    data.costType,
+    data.subItemName,
+    data.userId,
+    data.notes || "",
+    data.income || "",
+    data.expense || "",
+    data.synonyms || ""
+  ];
+}
+
+// 6. 測試計畫
+function test() {
+  const testData = {
+    userType: "M",
+    date: "2025/03/31",
+    time: "09 30",
+    mainItemCode: "100",
+    subItemCode: "101",
+    costType: "現金",
+    subItemName: "餐飲",
+    userId: "U1234567890",
+    income: 1000,
+    expense: 0,
+    synonyms: "餐飲"
+  };
+  doPost({ postData: { contents: JSON.stringify(testData) } });
+}
