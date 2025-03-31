@@ -1,16 +1,10 @@
-
+Error log_v1.0
 
 1. 錯誤時間（Timestamp）
-
 記錄錯誤發生的具體時間。
 
-
-
 2. 錯誤訊息（Error Message）
-
 詳細的錯誤描述，包括錯誤類型、原因和其他詳細信息。
-
-
 
 3. 操作類型（Operation Type）
 
