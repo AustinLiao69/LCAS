@@ -1,7 +1,6 @@
 MRD_Webhook模組_v1.6
 
 1.0 模組概述（Module Overview）
-
 Webhook 模組的主要用途是接收來自 LINE Messaging API 的 Webhook 事件，並將這些事件轉發至記帳處理模組進行解析與記錄。
 該模組負責以下功能：
 接收 Webhook 事件：即時監聽並處理 LINE 用戶的輸入訊息。
@@ -9,7 +8,7 @@ Webhook 模組的主要用途是接收來自 LINE Messaging API 的 Webhook 事�
 解析訊息內容：從用戶輸入中擷取關鍵資訊，例如科目名稱與金額。
 轉發處理請求：將結構化數據傳送至記帳處理模組進行記錄或學習新同義詞。
 Webhook 模組是記帳流程的觸發點，確保用戶輸入能即時且準確地轉化為記帳數據，並支援動態學習用戶習慣的詞彙。
----
+
 2.0 功能需求（Functional Requirements）
 2.1 接收 Webhook 事件
 監聽來自 LINE Messaging API 的 Webhook 事件，處理訊息類型的請求。
@@ -23,7 +22,7 @@ Webhook 模組是記帳流程的觸發點，確保用戶輸入能即時且準確
 如果用戶最終選擇了正確科目，則將其原始輸入存入科目代碼表的同義詞欄位，供未來匹配使用。
 2.5 回應 LINE API
 處理完成後，向 LINE API 回應 200 OK，確保請求順利執行。
----
+
 3.0 資料欄位
 Webhook 模組處理的主要欄位包括：
 event_type：事件類型，例如 message。
