@@ -26,17 +26,17 @@ MRD_記帳處理模組_Book-keeping_v1.2
 參照 "01. 總帳"，需紀錄如下：
 1.  收支ID（YYYYMMDD-00001）
 2.  User類型(M, S, J)
-3.  日期（YYYY/MM/DD），來自 LINE Chatbot
-4.  時間（HH:mm），來自 LINE Chatbot
-5.  科目大項（依照 0002. Subject form 提取）
-6.  科目代碼（依照 0002. Subject form 提取）
+3.  日期（YYYY/MM/DD），來自 LINE Messaging API
+4.  時間（HH:mm），來自 LINE Messaging API
+5.  大項名稱（依照 0002. Subject form 提取）
+6.  子項代碼（依照 0002. Subject form 提取）
 7.  費用種類（刷卡/現金）
-8.  科目名稱（依照 0002. Subject form 提取）
+8.  子項名稱（依照 0002. Subject form 提取）
 9.  登錄者（LINE UID）
-10.  備註（可選）
-11.  收入（收入金額填於此）
-12.  支出（支出金額填於此）
-13.  同義詞
+10. 備註（可選）
+11. 收入（收入金額填於此）
+12. 支出（支出金額填於此）
+13. 同義詞(可擴充)
 
 3.2 輸出
 - 收支報表：按日、週、月、年匯總的收支報表。
