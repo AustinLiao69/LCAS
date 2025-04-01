@@ -1,28 +1,25 @@
 MRD_Webhook模組_v1.9
 
 1.0 模組概述（Module Overview）
-
 Webhook 模組的主要用途是接收來自 LINE Messaging API 的 Webhook 事件，並將這些事件轉發至資料分配模組（DD）進行後續處理。
-
 該模組負責以下功能：
-
 接收 Webhook 事件：即時監聽並處理來自 LINE 用戶的輸入訊息。
-
 驗證請求：確保數據來源為 LINE，防止惡意攻擊。
-
 轉發處理請求：將用戶輸入的數據傳送至資料分配模組（DD）進行分類與分發。
-
 Webhook 模組是數據處理流程的觸發點，確保用戶輸入能即時且準確地傳遞至 DD 進行處理。
 
 2.0 功能需求（Functional Requirements）
+
 2.1 接收 Webhook 事件
 監聽來自 LINE Messaging API 的 Webhook 事件，處理訊息類型的請求。
+
 2.2 驗證 Webhook 請求
 驗證請求的合法性，確保來源為 LINE，防止惡意請求。
+
 2.3 轉發訊息至資料分配模組（DD）
 將用戶輸入的數據封裝後，轉發至資料分配模組（DD），由 DD 進行分類與分發。
-2.4 回應 LINE API
 
+2.4 回應 LINE API
 處理完成後，向 LINE API 回應 200 OK，確保請求順利執行。
 
 3.0 資料欄位
@@ -33,6 +30,7 @@ timestamp：訊息的時間戳記。
 original_text：用戶輸入的原始內容，例如「中餐 120」
 
 4.0 輸入/輸出規格（Input & Output Specifications）
+
 4.1 Webhook 請求（輸入）
 Webhook 模組會接收來自 LINE Messaging API 的請求，範例如下：
 
