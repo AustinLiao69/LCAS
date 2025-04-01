@@ -2,7 +2,7 @@ LCAS Project Charter v1.2
 
 1.0 專案背景（Project Background）
 
-LCAS（LINE CHATBOT Auto Accounting System）專案旨在開發一個全面的自動化會計系統，通過與 LINE 聊天機器人平台的整合，實現自動會計處理、財務報表生成、數據分析等功能。本系統將有助於企業通過 Chatbot 自動管理帳目、生成報表、進行財務分析，並提升操作效率。
+LCAS（LINE CHATBOT Auto Accounting System）專案旨在開發一個全面的自動化會計系統，通過與 LINE 聊天機器人平台的整合，實現自動會計處理、財務報表生成、數據分析等功能。本系統將有助於個人通過 Chatbot 自動管理帳目、生成報表、進行財務分析，並提升操作效率。
 
 2.0 專案目標（Project Objectives）
 
