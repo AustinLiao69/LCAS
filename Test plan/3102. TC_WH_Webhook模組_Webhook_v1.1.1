@@ -1,8 +1,8 @@
 /**
- * WH_Testcode_1_0_3_copilot
- * Version: 1.0.3
+ * WH_Testcode_1_1_1_Copilot
+ * Version: 1.1.1
  * Author: Copilot
- * Date: 2025-04-02 03:37:38 UTC
+ * Date: 2025-04-02 12:10:30 UTC
  */
 
 // 1. 定義常數與配置
@@ -27,17 +27,17 @@ function logDebug(step, message, data = null) {
 
 // 3. 主要的webhook處理函數
 function doPost(e) {
-  logDebug('1', '開始處理webhook請求', { headers: e.headers });
+  logDebug('1', '開始處理webhook請求', { event: e });
   
   try {
     // 4. 驗證請求格式
-    if (!e.postData || !e.postData.contents) {
-      logDebug('2', '請求格式無效');
+    if (!e || !e.postData || !e.postData.contents) {
+      logDebug('2', '請求格式無效或缺少postData');
       return createResponse(400, 'Invalid request format');
     }
 
     // 5. 取得並驗證LINE簽名
-    const signature = e.headers['X-Line-Signature'];
+    const signature = e.headers ? e.headers['X-Line-Signature'] : null;
     if (!signature) {
       logDebug('3', '缺少LINE簽名');
       return createResponse(403, 'Signature required');
@@ -60,18 +60,25 @@ function doPost(e) {
       return createResponse(400, 'Invalid webhook data');
     }
 
-    // 9. 處理webhook事件
+    // 9. 確保 webhookData 包含 events 屬性並且是數組
+    if (!webhookData.data || !webhookData.data.events || !Array.isArray(webhookData.data.events)) {
+      logDebug('7', 'webhookData 中缺少 events 屬性或不是數組', webhookData.data);
+      return createResponse(400, 'Invalid webhook events data');
+    }
+
+    // 10. 處理webhook事件
+    logDebug('8', '準備處理 events', { events: webhookData.data.events });
     return processWebhookEvents(webhookData.data);
 
   } catch (error) {
-    logDebug('7', '處理請求時發生錯誤', { error: error.toString() });
+    logDebug('9', '處理請求時發生錯誤', { error: error.toString() });
     return createResponse(500, 'Internal server error');
   }
 }
 
-// 10. 驗證LINE簽名的函數
+// 11. 驗證LINE簽名的函數
 function isValidSignature(content, signature) {
-  logDebug('8', '開始驗證簽名');
+  logDebug('10', '開始驗證簽名');
   
   try {
     const calculatedSignature = Utilities.computeHmacSha256Signature(
@@ -80,21 +87,21 @@ function isValidSignature(content, signature) {
     );
     const encodedSignature = Utilities.base64Encode(calculatedSignature);
     
-    logDebug('9', '簽名比對', {
+    logDebug('11', '簽名比對', {
       calculated: encodedSignature,
       received: signature
     });
     
     return encodedSignature === signature;
   } catch (error) {
-    logDebug('10', '簽名驗證過程發生錯誤', { error: error.toString() });
+    logDebug('12', '簽名驗證過程發生錯誤', { error: error.toString() });
     return false;
   }
 }
 
-// 11. 解析webhook數據的函數
+// 12. 解析webhook數據的函數
 function parseWebhookData(content) {
-  logDebug('11', '開始解析webhook數據');
+  logDebug('13', '開始解析webhook數據');
   
   try {
     const data = JSON.parse(content);
@@ -106,7 +113,7 @@ function parseWebhookData(content) {
       };
     }
 
-    logDebug('12', '解析webhook數據成功', { eventsCount: data.events.length });
+    logDebug('14', '解析webhook數據成功', { eventsCount: data.events.length });
     return {
       success: true,
       data: data
@@ -119,31 +126,45 @@ function parseWebhookData(content) {
   }
 }
 
-// 12. 處理webhook事件的函數
+// 13. 處理webhook事件的函數
 function processWebhookEvents(webhookData) {
-  logDebug('13', '開始處理events', { events: webhookData.events });
+  if (!webhookData || !webhookData.events || !Array.isArray(webhookData.events)) {
+    logDebug('13', '無效的webhookData', { webhookData });
+    return createResponse(400, 'Invalid webhook data');
+  }
+
+  logDebug('14', '開始處理events', { events: webhookData.events });
   
   try {
-    // 13. 處理每個事件
+    // 14. 處理每個事件
     for (const event of webhookData.events) {
+      if (!event || !event.type) {
+        logDebug('15', '無效的事件對象', { event });
+        return createResponse(400, 'Invalid event object');
+      }
       const result = forwardToMockDD(event);
       if (!result.success) {
-        logDebug('14', '轉發到DD失敗', result);
+        logDebug('16', '轉發到DD失敗', result);
         return createResponse(500, 'Failed to process event');
       }
     }
 
-    logDebug('15', '所有事件處理完成');
+    logDebug('17', '所有事件處理完成');
     return createResponse(200, 'OK');
   } catch (error) {
-    logDebug('16', '處理events時發生錯誤', { error: error.toString() });
+    logDebug('18', '處理events時發生錯誤', { error: error.toString() });
     return createResponse(500, 'Event processing error');
   }
 }
 
 // 14. 轉發到模擬DD模組的函數
 function forwardToMockDD(event) {
-  logDebug('17', '開始轉發到模擬DD', { event });
+  if (!event || !event.type) {
+    logDebug('18', '無效的事件對象', { event });
+    return { success: false, error: 'Invalid event object' };
+  }
+
+  logDebug('19', '開始轉發到模擬DD', { event });
   
   // 模擬DD處理邏輯
   const payload = {
@@ -154,7 +175,7 @@ function forwardToMockDD(event) {
     source: 'LINE'
   };
 
-  logDebug('18', '模擬DD接收到的payload', { payload });
+  logDebug('20', '模擬DD接收到的payload', { payload });
 
   // 模擬成功回應
   return { success: true };
@@ -162,7 +183,45 @@ function forwardToMockDD(event) {
 
 // 15. 創建HTTP回應的輔助函數
 function createResponse(code, message) {
-  return ContentService.createTextOutput(message)
-    .setMimeType(ContentService.MimeType.TEXT)
-    .setResponseCode(code);
+  const output = HtmlService.createHtmlOutput(message);
+  output.setTitle('Response');
+  output.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  return output;
+}
+
+// 測試函數，用於模擬 webhook 請求
+function testWebhook() {
+  // 模擬的 webhook 數據
+  const mockContent = JSON.stringify({
+    events: [
+      {
+        type: 'message',
+        source: {
+          userId: 'U1234567890'
+        },
+        timestamp: 1618361234567,
+        message: {
+          id: '1234567890123',
+          type: 'text',
+          text: 'Hello, world'
+        }
+      }
+    ]
+  });
+
+  // 模擬的 POST 請求物件
+  const mockRequest = {
+    postData: {
+      contents: mockContent
+    },
+    headers: {
+      'X-Line-Signature': 'MOCK_SIGNATURE'
+    }
+  };
+
+  // 調用 doPost 函數處理模擬的請求
+  const response = doPost(mockRequest);
+
+  // 打印回應結果
+  console.log(response.getContent());
 }
