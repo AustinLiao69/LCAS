@@ -1,4 +1,0 @@
-// 測試運行器函數
-function runTests() {
-  testWebhook();
-}
