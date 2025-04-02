@@ -31,7 +31,7 @@ function doPost(e) {
   
   try {
     // 4. 驗證請求格式
-    if (!e || !e.postData ||不e.postData.contents) {
+    if (!e || !e.postData ||!e.postData.contents) {
       logDebug('2', '請求格式無效或缺少postData');
       return createResponse(400, 'Invalid request format');
     }
