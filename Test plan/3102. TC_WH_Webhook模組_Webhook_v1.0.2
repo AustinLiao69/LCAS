@@ -1,0 +1,197 @@
+
+/**
+ * Webhook Module for LINE Messaging API
+ * Version: 1.0.2
+ * Author: AustinLiao69
+ * Date: 2025-04-02 03:19:16 UTC
+ */
+
+// 1. 定義常數與配置
+const CONFIG = {
+  LINE_CHANNEL_SECRET: 'YOUR_CHANNEL_SECRET',
+  DD_API_ENDPOINT: 'YOUR_DD_MODULE_ENDPOINT',
+  MAX_RETRY_COUNT: 3,
+  RETRY_DELAY_MS: 1000
+};
+
+// 2. 定義記錄器函數
+function logDebug(step, message, data = null) {
+  const timestamp = new Date().toISOString();
+  const logMessage = {
+    timestamp,
+    step,
+    message,
+    data: data ? JSON.stringify(data) : null
+  };
+  console.log(JSON.stringify(logMessage));
+}
+
+// 3. 主要的webhook處理函數
+function doPost(e) {
+  logDebug('1', '開始處理webhook請求', { headers: e.headers });
+  
+  try {
+    // 4. 驗證請求格式
+    if (!e.postData || !e.postData.contents) {
+      logDebug('2', '請求格式無效');
+      return createResponse(400, 'Invalid request format');
+    }
+
+    // 5. 取得並驗證LINE簽名
+    const signature = e.headers['X-Line-Signature'];
+    if (!signature) {
+      logDebug('3', '缺少LINE簽名');
+      return createResponse(403, 'Signature required');
+    }
+
+    // 6. 取得請求內容
+    const content = e.postData.contents;
+    logDebug('4', '收到請求內容', { content });
+
+    // 7. 驗證簽名
+    if (!isValidSignature(content, signature)) {
+      logDebug('5', '簽名驗證失敗');
+      return createResponse(403, 'Invalid signature');
+    }
+
+    // 8. 解析webhook事件
+    const webhookData = parseWebhookData(content);
+    if (!webhookData.success) {
+      logDebug('6', '解析webhook數據失敗', webhookData.error);
+      return createResponse(400, 'Invalid webhook data');
+    }
+
+    // 9. 處理webhook事件
+    return processWebhookEvents(webhookData.data);
+
+  } catch (error) {
+    logDebug('7', '處理請求時發生錯誤', { error: error.toString() });
+    return createResponse(500, 'Internal server error');
+  }
+}
+
+// 10. 驗證LINE簽名的函數
+function isValidSignature(content, signature) {
+  logDebug('8', '開始驗證簽名');
+  
+  try {
+    const calculatedSignature = Utilities.computeHmacSha256Signature(
+      content,
+      CONFIG.LINE_CHANNEL_SECRET
+    );
+    const encodedSignature = Utilities.base64Encode(calculatedSignature);
+    
+    logDebug('9', '簽名比對', {
+      calculated: encodedSignature,
+      received: signature
+    });
+    
+    return encodedSignature === signature;
+  } catch (error) {
+    logDebug('10', '簽名驗證過程發生錯誤', { error: error.toString() });
+    return false;
+  }
+}
+
+// 11. 解析webhook數據的函數
+function parseWebhookData(content) {
+  logDebug('11', '開始解析webhook數據');
+  
+  try {
+    const data = JSON.parse(content);
+    
+    if (!data.events || !Array.isArray(data.events)) {
+      return {
+        success: false,
+        error: 'Invalid events format'
+      };
+    }
+
+    logDebug('12', '解析webhook數據成功', { eventsCount: data.events.length });
+    return {
+      success: true,
+      data: data
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
+
+// 12. 處理webhook事件的函數
+function processWebhookEvents(webhookData) {
+  logDebug('13', '開始處理events', { events: webhookData.events });
+  
+  try {
+    // 13. 處理每個事件
+    for (const event of webhookData.events) {
+      const result = forwardToDD(event);
+      if (!result.success) {
+        logDebug('14', '轉發到DD失敗', result);
+        return createResponse(500, 'Failed to process event');
+      }
+    }
+
+    logDebug('15', '所有事件處理完成');
+    return createResponse(200, 'OK');
+  } catch (error) {
+    logDebug('16', '處理events時發生錯誤', { error: error.toString() });
+    return createResponse(500, 'Event processing error');
+  }
+}
+
+// 14. 轉發到DD模組的函數
+function forwardToDD(event) {
+  logDebug('17', '開始轉發到DD', { event });
+  
+  let retryCount = 0;
+  
+  while (retryCount < CONFIG.MAX_RETRY_COUNT) {
+    try {
+      const options = {
+        'method': 'post',
+        'contentType': 'application/json',
+        'payload': JSON.stringify(event),
+        'muteHttpExceptions': true
+      };
+
+      const response = UrlFetchApp.fetch(CONFIG.DD_API_ENDPOINT, options);
+      const responseCode = response.getResponseCode();
+
+      logDebug('18', 'DD回應', { 
+        responseCode,
+        retryCount 
+      });
+
+      if (responseCode === 200) {
+        return { success: true };
+      }
+
+      retryCount++;
+      Utilities.sleep(CONFIG.RETRY_DELAY_MS * retryCount);
+      
+    } catch (error) {
+      logDebug('19', 'DD轉發失敗', { 
+        error: error.toString(),
+        retryCount 
+      });
+      
+      retryCount++;
+      Utilities.sleep(CONFIG.RETRY_DELAY_MS * retryCount);
+    }
+  }
+
+  return { 
+    success: false,
+    error: `Failed after ${CONFIG.MAX_RETRY_COUNT} retries`
+  };
+}
+
+// 15. 創建HTTP回應的輔助函數
+function createResponse(code, message) {
+  return ContentService.createTextOutput(message)
+    .setMimeType(ContentService.MimeType.TEXT)
+    .setResponseCode(code);
+}
