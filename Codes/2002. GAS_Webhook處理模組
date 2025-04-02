@@ -1,1 +1,121 @@
 
+// WH_Webhook 模組_v1_1_4_Copilot
+
+// 1. 定義變數
+const webhookDebug = true;
+const webhookSheetId = "1TSn-X-8B_PDUseZZPbbc0AhK55E80DBXJqkPRtStOUY";
+const webhookSheetName = "Master Ledger_v1.0_20250327";
+const LINE_CHANNEL_SECRET = "e137bf2f264e9b6b80f46350fb1605b6"; // 替換為您的 LINE Channel Secret
+
+// 2. 初始函數
+function doPost(e) {
+  if (webhookDebug) {
+    Logger.log("doPost called");
+  }
+  
+  if (!e || !e.postData || !e.postData.contents) {
+    const error = "Missing postData or contents";
+    if (webhookDebug) {
+      Logger.log("Error: " + error);
+    }
+    return ContentService.createTextOutput(JSON.stringify({ error })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  const postData = JSON.parse(e.postData.contents);
+  if (!validateRequest(e)) {
+    const error = "Invalid request source";
+    if (webhookDebug) {
+      Logger.log("Error: " + error);
+    }
+    return ContentService.createTextOutput(JSON.stringify({ error })).setMimeType(ContentService.MimeType.JSON).setResponseCode(403);
+  }
+  
+  const event = postData.events[0];
+  const message = event.message.text;
+  const userId = event.source.userId;
+  const timestamp = new Date(event.timestamp);
+  
+  const parsedData = parseMessage(message);
+  if (parsedData.error) {
+    if (webhookDebug) {
+      Logger.log("Parse Error: " + parsedData.error);
+    }
+    return ContentService.createTextOutput(JSON.stringify({ error: parsedData.error })).setMimeType(ContentService.MimeType.JSON).setResponseCode(400);
+  }
+  
+  const ddData = {
+    event_type: "message",
+    user_id: userId,
+    timestamp: timestamp,
+    original_text: message,
+    amount: parsedData.amount,
+    source: "LINE"
+  };
+  
+  const response = processDDData(ddData);
+  if (response.error) {
+    if (webhookDebug) {
+      Logger.log("DD Module Error: " + response.error);
+    }
+    return ContentService.createTextOutput(JSON.stringify({ error: response.error })).setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
+}
+
+// 3. 驗證請求
+function validateRequest(e) {
+  if (webhookDebug) {
+    Logger.log("Validating request");
+  }
+  const signature = e.postData.headers["X-Line-Signature"];
+  const payload = e.postData.contents;
+  const hash = Utilities.computeHmacSha256Signature(payload, LINE_CHANNEL_SECRET);
+  const base64Hash = Utilities.base64Encode(hash);
+  const isValid = signature === base64Hash;
+  if (webhookDebug) {
+    Logger.log("Request valid: " + isValid);
+  }
+  return isValid;
+}
+
+// 4. 解析訊息
+function parseMessage(message) {
+  if (webhookDebug) {
+    Logger.log("Parsing message: " + message);
+  }
+  const parts = message.match(/(\D+)(\d+)/);
+  if (!parts || parts.length < 3) {
+    const error = "Unable to parse message";
+    if (webhookDebug) {
+      Logger.log("Parse Error: " + error);
+    }
+    return { error: error };
+  }
+  return {
+    subjectName: parts[1].trim(),
+    amount: parseInt(parts[2].trim(), 10)
+  };
+}
+
+// 5. 傳送數據至 DD 資料分配模組
+function processDDData(data) {
+  if (webhookDebug) {
+    Logger.log("Processing DD data: " + JSON.stringify(data));
+  }
+  const sheet = SpreadsheetApp.openById(webhookSheetId).getSheetByName(webhookSheetName);
+  
+  const record = [
+    data.user_id,
+    Utilities.formatDate(new Date(data.timestamp), Session.getScriptTimeZone(), "yyyy/MM/dd"),
+    Utilities.formatDate(new Date(data.timestamp), Session.getScriptTimeZone(), "HH:mm"),
+    data.subject_name,
+    data.amount,
+    data.source,
+    data.original_text
+  ];
+  
+  sheet.appendRow(record);
+  
+  return { success: true };
+}
