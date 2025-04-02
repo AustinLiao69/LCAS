@@ -1,15 +1,14 @@
-
 /**
- * Webhook Module for LINE Messaging API
- * Version: 1.0.2
- * Author: AustinLiao69
- * Date: 2025-04-02 03:19:16 UTC
+ * WH test code for LINE Messaging API
+ * Version: 1.0.3
+ * Author: Copilot
+ * Date: 2025-04-02 03:37:38 UTC
  */
 
 // 1. 定義常數與配置
 const CONFIG = {
   LINE_CHANNEL_SECRET: 'YOUR_CHANNEL_SECRET',
-  DD_API_ENDPOINT: 'YOUR_DD_MODULE_ENDPOINT',
+  DD_API_ENDPOINT: 'MOCK_DD_ENDPOINT', // 模擬DD API
   MAX_RETRY_COUNT: 3,
   RETRY_DELAY_MS: 1000
 };
@@ -127,7 +126,7 @@ function processWebhookEvents(webhookData) {
   try {
     // 13. 處理每個事件
     for (const event of webhookData.events) {
-      const result = forwardToDD(event);
+      const result = forwardToMockDD(event);
       if (!result.success) {
         logDebug('14', '轉發到DD失敗', result);
         return createResponse(500, 'Failed to process event');
@@ -142,51 +141,23 @@ function processWebhookEvents(webhookData) {
   }
 }
 
-// 14. 轉發到DD模組的函數
-function forwardToDD(event) {
-  logDebug('17', '開始轉發到DD', { event });
+// 14. 轉發到模擬DD模組的函數
+function forwardToMockDD(event) {
+  logDebug('17', '開始轉發到模擬DD', { event });
   
-  let retryCount = 0;
-  
-  while (retryCount < CONFIG.MAX_RETRY_COUNT) {
-    try {
-      const options = {
-        'method': 'post',
-        'contentType': 'application/json',
-        'payload': JSON.stringify(event),
-        'muteHttpExceptions': true
-      };
-
-      const response = UrlFetchApp.fetch(CONFIG.DD_API_ENDPOINT, options);
-      const responseCode = response.getResponseCode();
-
-      logDebug('18', 'DD回應', { 
-        responseCode,
-        retryCount 
-      });
-
-      if (responseCode === 200) {
-        return { success: true };
-      }
-
-      retryCount++;
-      Utilities.sleep(CONFIG.RETRY_DELAY_MS * retryCount);
-      
-    } catch (error) {
-      logDebug('19', 'DD轉發失敗', { 
-        error: error.toString(),
-        retryCount 
-      });
-      
-      retryCount++;
-      Utilities.sleep(CONFIG.RETRY_DELAY_MS * retryCount);
-    }
-  }
-
-  return { 
-    success: false,
-    error: `Failed after ${CONFIG.MAX_RETRY_COUNT} retries`
+  // 模擬DD處理邏輯
+  const payload = {
+    event_type: event.type,
+    user_id: event.source.userId,
+    timestamp: event.timestamp,
+    original_text: event.message.text,
+    source: 'LINE'
   };
+
+  logDebug('18', '模擬DD接收到的payload', { payload });
+
+  // 模擬成功回應
+  return { success: true };
 }
 
 // 15. 創建HTTP回應的輔助函數
