@@ -1,0 +1,172 @@
+3100. Test code編寫代碼規則_v1.0
+
+1. 各測試功能必須與Test plan的測試案例互相對照，必須在此功能後面顯示通過或未通過測試
+例: {"timestamp":"2025-04-02T07:20:37.655Z","step":"17","message":"所有事件處理完成","data":null}
+    TC-006 測試正常回應 - 測試正常回應: 通過
+       
+2. 最後面要有測試該GAS模組的測試函式
+   例: // 測試函數，用於模擬 webhook 請求
+function testWebhook() {
+  const tests = [
+    {
+      description: '測試正常的 webhook 請求',
+      mockContent: JSON.stringify({
+        events: [
+          {
+            type: 'message',
+            source: {
+              userId: 'U1234567890'
+            },
+            timestamp: 1618361234567,
+            message: {
+              id: '1234567890123',
+              type: 'text',
+              text: 'Hello, world'
+            }
+          }
+        ]
+      }),
+      expectedResponse: 'OK',
+      testCase: 'TC-001 測試 Webhook 事件接收'
+    },
+    {
+      description: '測試無效簽名',
+      mockContent: JSON.stringify({
+        events: [
+          {
+            type: 'message',
+            source: {
+              userId: 'U1234567890'
+            },
+            timestamp: 1618361234567,
+            message: {
+              id: '1234567890123',
+              type: 'text',
+              text: 'Hello, world'
+            }
+          }
+        ]
+      }),
+      signature: 'INVALID_SIGNATURE',
+      expectedResponse: 'Invalid signature',
+      testCase: 'TC-002 測試請求驗證'
+    },
+    {
+      description: '測試無效的事件數據',
+      mockContent: JSON.stringify({
+        invalid: 'data'
+      }),
+      expectedResponse: 'Invalid webhook data',
+      testCase: 'TC-005 測試解析錯誤'
+    },
+    {
+      description: '測試 DD 無回應時的行為',
+      mockContent: JSON.stringify({
+        events: [
+          {
+            type: 'message',
+            source: {
+              userId: 'U1234567890'
+            },
+            timestamp: 1618361234567,
+            message: {
+              id: '1234567890123',
+              type: 'text',
+              text: 'Hello, world'
+            }
+          }
+        ]
+      }),
+      ddResponse: { success: false, error: 'DD no response' },
+      expectedResponse: 'Failed to process event',
+      testCase: 'TC-004 測試 DD 無回應時的行為'
+    },
+    {
+      description: '測試訊息轉發',
+      mockContent: JSON.stringify({
+        events: [
+          {
+            type: 'message',
+            source: {
+              userId: 'U1234567890'
+            },
+            timestamp: 1618361234567,
+            message: {
+              id: '1234567890123',
+              type: 'text',
+              text: 'Hello, world'
+            }
+          }
+        ]
+      }),
+      ddResponse: { success: true },
+      expectedResponse: 'OK',
+      testCase: 'TC-003 測試訊息轉發'
+    },
+    {
+      description: '測試正常回應',
+      mockContent: JSON.stringify({
+        events: [
+          {
+            type: 'message',
+            source: {
+              userId: 'U1234567890'
+            },
+            timestamp: 1618361234567,
+            message: {
+              id: '1234567890123',
+              type: 'text',
+              text: 'Hello, world'
+            }
+          }
+        ]
+      }),
+      expectedResponse: 'OK',
+      testCase: 'TC-006 測試正常回應'
+    }
+  ];
+
+  const results = [];
+
+  tests.forEach(test => {
+    const mockRequest = {
+      postData: {
+        contents: test.mockContent
+      },
+      headers: {
+        'X-Line-Signature': test.signature || createSignature(test.mockContent)
+      }
+    };
+
+    // 模擬 DD API 回應
+    if (test.ddResponse) {
+      forwardToMockDD = function(event) {
+        return test.ddResponse;
+      };
+    }
+
+    const response = doPost(mockRequest);
+    const result = response.getContent() === test.expectedResponse ? '通過' : '未通過';
+    console.log(`${test.testCase} - ${test.description}: ${result}`);
+    results.push({ testCase: test.testCase, result });
+  });
+
+  // 按測試案例順序顯示測試總結
+  results.sort((a, b) => a.testCase.localeCompare(b.testCase));
+
+  console.log('測試總結:');
+  results.forEach(result => console.log(`${result.testCase}: ${result.result}`));
+}
+
+3. test code需有詳細的日誌紀錄
+
+4. 需有測試總結
+   例: 測試總結:
+TC-001 測試 Webhook 事件接收: 通過
+TC-002 測試請求驗證: 通過
+TC-003 測試訊息轉發: 通過
+TC-004 測試 DD 無回應時的行為: 通過
+TC-005 測試解析錯誤: 通過
+TC-006 測試正常回應: 通過
+
+
