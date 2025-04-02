@@ -1,9 +1,150 @@
 /**
- * WH_Testcode_1_1_4_Copilot
- * Version: 1.1.4
+ * WH_Testcode_1_2_0_Copilot
+ * Version: 1.2.0
  * Author: Copilot
- * Date: 2025-04-02 06:33:00 UTC
+ * Date: 2025-04-02 16:11:57 UTC+8
  */
+
+// WH_Webhook 模組_v1_1_7_Copilot 的函數，並添加前綴以避免命名衝突
+const webhookModuleDebug = true;
+const webhookModuleSheetId = "1TSn-X-8B_PDUseZZPbbc0AhK55E80DBXJqkPRtStOUY";
+const webhookModuleSheetName = "Master Ledger_v1.0_20250327";
+const webhookModuleLINE_CHANNEL_SECRET = "e137bf2f264e9b6b80f46350fb1605b6"; // 替換為您的 LINE Channel Secret
+
+function webhookModuleDoPost(e) {
+  if (webhookModuleDebug) {
+    Logger.log("doPost called");
+  }
+  
+  if (typeof e === 'undefined' || typeof e.postData === 'undefined' || typeof e.postData.contents === 'undefined') {  // 使用 typeof 檢查
+    const error = "Missing postData or contents";
+    if (webhookModuleDebug) {
+      Logger.log("Error: " + error);
+    }
+    return ContentService.createTextOutput(JSON.stringify({ error })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  const postData = JSON.parse(e.postData.contents);
+  if (!webhookModuleValidateRequest(e)) {
+    const error = "Invalid request source";
+    if (webhookModuleDebug) {
+      Logger.log("Error: " + error);
+    }
+    return ContentService.createTextOutput(JSON.stringify({ error })).setMimeType(ContentService.MimeType.JSON).setResponseCode(403);
+  }
+
+  // 修正：迭代處理所有事件
+  const responses = postData.events.map(event => {
+    const message = event.message.text;
+    const userId = event.source.userId;
+    const timestamp = new Date(event.timestamp);
+
+    const parsedData = webhookModuleParseMessage(message);
+    if (parsedData.error) {
+      if (webhookModuleDebug) {
+        Logger.log("Parse Error: " + parsedData.error);
+      }
+      return { error: parsedData.error, responseCode: 400 };
+    }
+
+    const ddData = {
+      event_type: "message",
+      user_id: userId,
+      timestamp: timestamp,
+      original_text: message,
+      subject_name: parsedData.subjectName, // 修正：確保 subject_name 被正確提取
+      amount: parsedData.amount,
+      source: "LINE"
+    };
+
+    const response = webhookModuleProcessDDData(ddData);
+    if (response.error) {
+      if (webhookModuleDebug) {
+        Logger.log("DD Module Error: " + response.error);
+      }
+      return { error: response.error, responseCode: 500 };
+    }
+
+    return { success: true, responseCode: 200 };
+  });
+
+  // 返回第一個錯誤響應，否則返回成功響應
+  const errorResponse = responses.find(r => r.error);
+  if (errorResponse) {
+    return ContentService.createTextOutput(JSON.stringify({ error: errorResponse.error })).setMimeType(ContentService.MimeType.JSON).setResponseCode(errorResponse.responseCode);
+  }
+
+  return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
+}
+
+function webhookModuleValidateRequest(e) {
+  if (webhookModuleDebug) {
+    Logger.log("Validating request");
+  }
+  const signature = e.headers["X-Line-Signature"];
+  const payload = e.postData.contents;
+  const hash = Utilities.computeHmacSha256Signature(payload, webhookModuleLINE_CHANNEL_SECRET);
+  const base64Hash = Utilities.base64Encode(hash);
+  const isValid = signature === base64Hash;
+  if (webhookModuleDebug) {
+    Logger.log("Request valid: " + isValid);
+  }
+  return isValid;
+}
+
+function webhookModuleParseMessage(message) {
+  if (webhookModuleDebug) {
+    Logger.log("Parsing message: " + message);
+  }
+  const parts = message.match(/(\D+)(\d+)/);
+  if (!parts || parts.length < 3) {
+    const error = "Unable to parse message";
+    if (webhookModuleDebug) {
+      Logger.log("Parse Error: " + error);
+    }
+    return { error: error };
+  }
+  return {
+    subjectName: parts[1].trim(),
+    amount: parseInt(parts[2].trim(), 10)
+  };
+}
+
+function webhookModuleProcessDDData(data) {
+  if (webhookModuleDebug) {
+    Logger.log("Processing DD data: " + JSON.stringify(data));
+  }
+
+  // 增加重試機制
+  for (let attempt = 0; attempt < CONFIG.MAX_RETRY_COUNT; attempt++) {
+    try {
+      const sheet = SpreadsheetApp.openById(webhookModuleSheetId).getSheetByName(webhookModuleSheetName);
+
+      const record = [
+        data.user_id,
+        Utilities.formatDate(new Date(data.timestamp), Session.getScriptTimeZone(), "yyyy/MM/dd"),
+        Utilities.formatDate(new Date(data.timestamp), Session.getScriptTimeZone(), "HH:mm"),
+        data.subject_name,
+        data.amount,
+        data.source,
+        data.original_text
+      ];
+
+      sheet.appendRow(record);
+      return { success: true };
+    } catch (error) {
+      if (webhookModuleDebug) {
+        Logger.log("Attempt " + (attempt + 1) + " failed: " + error.toString());
+      }
+      if (attempt === CONFIG.MAX_RETRY_COUNT - 1) {
+        return { error: "Failed to process data after " + CONFIG.MAX_RETRY_COUNT + " attempts" };
+      }
+      Utilities.sleep(CONFIG.RETRY_DELAY_MS);
+    }
+  }
+}
+
+// 測試代碼開始
 
 // 1. 定義常數與配置
 const CONFIG = {
@@ -15,7 +156,7 @@ const CONFIG = {
 
 // 2. 定義記錄器函數
 function logDebug(step, message, data = null) {
-  const timestamp = new Date().toISOString();
+  const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss'Z'");
   const logMessage = {
     timestamp,
     step,
@@ -25,8 +166,8 @@ function logDebug(step, message, data = null) {
   console.log(JSON.stringify(logMessage));
 }
 
-// 3. 主要的webhook處理函數
-function doPost(e) {
+// 3. 測試的主要webhook處理函數
+function testDoPost(e) {
   logDebug('1', '開始處理webhook請求', { event: e });
   
   try {
@@ -189,6 +330,12 @@ function createResponse(code, message) {
   return output;
 }
 
+// 16. 創建簽名的輔助函數
+function createSignature(content) {
+  const hash = Utilities.computeHmacSha256Signature(content, CONFIG.LINE_CHANNEL_SECRET);
+  return Utilities.base64Encode(hash);
+}
+
 // 測試函數，用於模擬 webhook 請求
 function testWebhook() {
   const tests = [
@@ -318,7 +465,7 @@ function testWebhook() {
         contents: test.mockContent
       },
       headers: {
-        'X-Line-Signature': test.signature || 'MOCK_SIGNATURE'
+        'X-Line-Signature': test.signature || createSignature(test.mockContent)
       }
     };
 
@@ -329,7 +476,7 @@ function testWebhook() {
       };
     }
 
-    const response = doPost(mockRequest);
+    const response = testDoPost(mockRequest);
     const result = response.getContent() === test.expectedResponse ? '通過' : '未通過';
     console.log(`${test.testCase} - ${test.description}: ${result}`);
     results.push({ testCase: test.testCase, result });
