@@ -1,13 +1,13 @@
 /**
- * WH_Testcode_1_1_3_Copilot
- * Version: 1.1.3
+ * WH_Testcode_1_1_4_Copilot
+ * Version: 1.1.4
  * Author: Copilot
- * Date: 2025-04-02 05:56:14 UTC
+ * Date: 2025-04-02 06:33:00 UTC
  */
 
 // 1. 定義常數與配置
 const CONFIG = {
-  LINE_CHANNEL_SECRET: 'YOUR_CHANNEL_SECRET',
+  LINE_CHANNEL_SECRET: 'e137bf2f264e9b6b80f46350fb1605b6',
   DD_API_ENDPOINT: 'MOCK_DD_ENDPOINT', // 模擬DD API
   MAX_RETRY_COUNT: 3,
   RETRY_DELAY_MS: 1000
@@ -31,7 +31,7 @@ function doPost(e) {
   
   try {
     // 4. 驗證請求格式
-    if (!e || !e.postData || !e.postData.contents) {
+    if (!e || !e.postData ||不e.postData.contents) {
       logDebug('2', '請求格式無效或缺少postData');
       return createResponse(400, 'Invalid request format');
     }
@@ -210,7 +210,8 @@ function testWebhook() {
           }
         ]
       }),
-      expectedResponse: 'OK'
+      expectedResponse: 'OK',
+      testCase: 'TC-001 測試 Webhook 事件接收'
     },
     {
       description: '測試無效簽名',
@@ -231,16 +232,85 @@ function testWebhook() {
         ]
       }),
       signature: 'INVALID_SIGNATURE',
-      expectedResponse: 'Invalid signature'
+      expectedResponse: 'Invalid signature',
+      testCase: 'TC-002 測試請求驗證'
     },
     {
       description: '測試無效的事件數據',
       mockContent: JSON.stringify({
         invalid: 'data'
       }),
-      expectedResponse: 'Invalid webhook data'
+      expectedResponse: 'Invalid webhook data',
+      testCase: 'TC-005 測試解析錯誤'
+    },
+    {
+      description: '測試 DD 無回應時的行為',
+      mockContent: JSON.stringify({
+        events: [
+          {
+            type: 'message',
+            source: {
+              userId: 'U1234567890'
+            },
+            timestamp: 1618361234567,
+            message: {
+              id: '1234567890123',
+              type: 'text',
+              text: 'Hello, world'
+            }
+          }
+        ]
+      }),
+      ddResponse: { success: false, error: 'DD no response' },
+      expectedResponse: 'Failed to process event',
+      testCase: 'TC-004 測試 DD 無回應時的行為'
+    },
+    {
+      description: '測試訊息轉發',
+      mockContent: JSON.stringify({
+        events: [
+          {
+            type: 'message',
+            source: {
+              userId: 'U1234567890'
+            },
+            timestamp: 1618361234567,
+            message: {
+              id: '1234567890123',
+              type: 'text',
+              text: 'Hello, world'
+            }
+          }
+        ]
+      }),
+      ddResponse: { success: true },
+      expectedResponse: 'OK',
+      testCase: 'TC-003 測試訊息轉發'
+    },
+    {
+      description: '測試正常回應',
+      mockContent: JSON.stringify({
+        events: [
+          {
+            type: 'message',
+            source: {
+              userId: 'U1234567890'
+            },
+            timestamp: 1618361234567,
+            message: {
+              id: '1234567890123',
+              type: 'text',
+              text: 'Hello, world'
+            }
+          }
+        ]
+      }),
+      expectedResponse: 'OK',
+      testCase: 'TC-006 測試正常回應'
     }
   ];
+
+  const results = [];
 
   tests.forEach(test => {
     const mockRequest = {
@@ -252,8 +322,22 @@ function testWebhook() {
       }
     };
 
+    // 模擬 DD API 回應
+    if (test.ddResponse) {
+      forwardToMockDD = function(event) {
+        return test.ddResponse;
+      };
+    }
+
     const response = doPost(mockRequest);
-    const result = response.getContent() === test.expectedResponse ? '通過測試' : '未通過測試';
-    console.log(`${test.description}: ${result}`);
+    const result = response.getContent() === test.expectedResponse ? '通過' : '未通過';
+    console.log(`${test.testCase} - ${test.description}: ${result}`);
+    results.push({ testCase: test.testCase, result });
   });
+
+  // 按測試案例順序顯示測試總結
+  results.sort((a, b) => a.testCase.localeCompare(b.testCase));
+
+  console.log('測試總結:');
+  results.forEach(result => console.log(`${result.testCase}: ${result.result}`));
 }
