@@ -1,4 +1,4 @@
-// WH_Webhook 模組_v1_1_6_Copilot
+// WH_Webhook 模組_v1_1_7_Copilot
 
 // 1. 定義變數
 const webhookDebug = true;
@@ -78,7 +78,7 @@ function validateRequest(e) {
   if (webhookDebug) {
     Logger.log("Validating request");
   }
-  const signature = e.postData.headers["X-Line-Signature"];
+  const signature = e.headers["X-Line-Signature"];
   const payload = e.postData.contents;
   const hash = Utilities.computeHmacSha256Signature(payload, LINE_CHANNEL_SECRET);
   const base64Hash = Utilities.base64Encode(hash);
