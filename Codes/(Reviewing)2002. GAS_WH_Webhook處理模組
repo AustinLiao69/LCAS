@@ -1,6 +1,6 @@
-// WH_Webhook 模組_v1_1_9_Cursor
+// WH_Webhook 模組_v1_2_2_Claude
 
-// 配置參數
+// 1. 配置參數
 const WH_CONFIG = {
   DEBUG: true,
   SHEET: {
@@ -16,24 +16,21 @@ const WH_CONFIG = {
   }
 };
 
-// 1. 初始函數
+// 2. 初始函數
 function WH_doPost(e) {
   WH_logDebug("收到 Webhook 請求");
   
   try {
-    // 驗證請求基本結構
     if (!WH_validateRequestStructure(e)) {
       return WH_createErrorResponse("無效的請求格式", 400);
     }
 
     const postData = JSON.parse(e.postData.contents);
     
-    // 驗證 LINE 簽章
     if (!WH_validateRequest(e)) {
       return WH_createErrorResponse("無效的請求來源", 403);
     }
 
-    // 處理事件
     const responses = postData.events.map(event => WH_processEvent(event));
     return WH_handleResponses(responses);
   } catch (error) {
@@ -42,14 +39,13 @@ function WH_doPost(e) {
   }
 }
 
-// 2. 請求結構驗證
+// 3. 請求結構驗證
 function WH_validateRequestStructure(e) {
   return e && e.postData && e.postData.contents;
 }
 
-// 3. LINE 簽章驗證
+// 4. LINE 簽章驗證
 function WH_validateRequest(e) {
-  WH_logDebug("驗證 LINE 簽章");
   const signature = e.headers["X-Line-Signature"];
   
   if (!signature) {
@@ -66,37 +62,23 @@ function WH_validateRequest(e) {
   try {
     const hash = Utilities.computeHmacSha256Signature(payload, WH_CONFIG.LINE.CHANNEL_SECRET);
     const base64Hash = Utilities.base64Encode(hash);
-    const isValid = signature === base64Hash;
-    WH_logDebug("簽章驗證結果: " + isValid);
-    return isValid;
+    return signature === base64Hash;
   } catch (error) {
     WH_logDebug("簽章驗證錯誤: " + error.toString());
     return false;
   }
 }
 
-// 4. 事件處理
+// 5. 事件處理主函數
 function WH_processEvent(event) {
   try {
-    // 檢查事件類型
-    if (!event || !event.type) {
-      return { error: "無效的事件類型", responseCode: 400 };
+    if (!WH_validateEventStructure(event)) {
+      return { error: "無效的事件結構", responseCode: 400 };
     }
 
-    // 檢查時間戳
-    if (!event.timestamp || isNaN(new Date(event.timestamp))) {
-      return { error: "無效的時間戳", responseCode: 400 };
-    }
-
-    // 根據事件類型處理
     switch(event.type) {
       case 'message':
-        if (!event.message || !event.message.text) {
-          return { error: "不支援的訊息類型", responseCode: 400 };
-        }
-        return WH_processTextMessage(event);
-      case 'image':
-        return { error: "圖片訊息尚未支援", responseCode: 400 };
+        return WH_processMessageEvent(event);
       default:
         return { error: "不支援的事件類型", responseCode: 400 };
     }
@@ -106,143 +88,48 @@ function WH_processEvent(event) {
   }
 }
 
-// 5. 文字訊息處理
-function WH_processTextMessage(event) {
-  const message = event.message.text;
-  const userId = event.source.userId;
-  const timestamp = new Date(event.timestamp);
+// 6. 事件結構驗證
+function WH_validateEventStructure(event) {
+  return (
+    event &&
+    event.type &&
+    event.timestamp &&
+    !isNaN(new Date(event.timestamp))
+  );
+}
 
-  const parsedData = WH_parseMessage(message);
-  if (parsedData.error) {
-    WH_logDebug("訊息解析錯誤: " + parsedData.error);
-    return { error: parsedData.error, responseCode: 400 };
+// 7. 訊息事件處理
+function WH_processMessageEvent(event) {
+  if (!event.message || !event.message.text) {
+    return { error: "不支援的訊息類型", responseCode: 400 };
   }
 
   const ddData = {
     event_type: "message",
-    user_id: userId,
-    timestamp: timestamp,
-    original_text: message,
-    subject_name: parsedData.subjectName,
-    amount: parsedData.amount,
+    user_id: event.source.userId,
+    timestamp: new Date(event.timestamp).toISOString(),
+    original_text: event.message.text,
     source: "LINE"
   };
 
-  const response = WH_processDDData(ddData);
-  if (response.error) {
-    WH_logDebug("DD 模組錯誤: " + response.error);
-    return { error: response.error, responseCode: 500 };
-  }
-
-  return { success: true, responseCode: 200 };
+  return WH_forwardToDDModule(ddData);
 }
 
-// 6. 訊息解析
-function WH_parseMessage(message) {
-  WH_logDebug("解析訊息: " + message);
-  
-  if (!message || typeof message !== 'string') {
-    return { error: "無效的訊息格式" };
-  }
-  
-  // 增加訊息長度檢查
-  if (message.length > 100) {
-    return { error: "訊息過長" };
-  }
-  
-  const parts = message.match(/(\D+)(\d+)/);
-  if (!parts || parts.length < 3) {
-    return { error: "無效的訊息格式。預期格式：<科目> <金額>" };
-  }
-  
-  const amount = parseInt(parts[2].trim(), 10);
-  // 增加金額範圍檢查
-  if (isNaN(amount) || amount <= 0 || amount > 1000000) {
-    return { error: "無效的金額範圍" };
-  }
-  
-  const subjectName = parts[1].trim();
-  // 增加科目名稱檢查
-  if (subjectName.length < 2 || subjectName.length > 20) {
-    return { error: "科目名稱長度無效" };
-  }
-  
-  return {
-    subjectName: subjectName,
-    amount: amount
-  };
-}
-
-// 7. DD 資料處理
-function WH_processDDData(data) {
-  WH_logDebug("處理 DD 資料: " + JSON.stringify(data));
-  
-  if (!WH_validateDDData(data)) {
-    return { error: "無效的 DD 資料格式" };
-  }
-
-  // 檢查試算表權限
-  try {
-    const spreadsheet = SpreadsheetApp.openById(WH_CONFIG.SHEET.ID);
-    const sheet = spreadsheet.getSheetByName(WH_CONFIG.SHEET.NAME);
-    
-    if (!sheet) {
-      throw new Error("找不到指定的工作表");
-    }
-  } catch (error) {
-    return { error: "試算表存取權限錯誤" };
-  }
-
-  // 使用鎖定機制確保資料寫入的原子性
-  const lock = LockService.getScriptLock();
-  try {
-    lock.waitLock(30000); // 等待最多 30 秒
-    
-    for (let attempt = 0; attempt < WH_CONFIG.RETRY.MAX_COUNT; attempt++) {
-      try {
-        const spreadsheet = SpreadsheetApp.openById(WH_CONFIG.SHEET.ID);
-        const sheet = spreadsheet.getSheetByName(WH_CONFIG.SHEET.NAME);
-        
-        const record = [
-          data.user_id,
-          Utilities.formatDate(new Date(data.timestamp), Session.getScriptTimeZone(), "yyyy/MM/dd"),
-          Utilities.formatDate(new Date(data.timestamp), Session.getScriptTimeZone(), "HH:mm"),
-          data.subject_name,
-          data.amount,
-          data.source,
-          data.original_text
-        ];
-
-        sheet.appendRow(record);
-        return { success: true };
-      } catch (error) {
-        WH_logDebug(`第 ${attempt + 1} 次嘗試失敗: ${error.toString()}`);
-        if (attempt === WH_CONFIG.RETRY.MAX_COUNT - 1) {
-          return { error: `處理失敗，已重試 ${WH_CONFIG.RETRY.MAX_COUNT} 次: ${error.message}` };
-        }
-        Utilities.sleep(WH_CONFIG.RETRY.DELAY_MS * (attempt + 1));
+// 8. 轉發至 DD 模組
+function WH_forwardToDDModule(data) {
+  for (let attempt = 1; attempt <= WH_CONFIG.RETRY.MAX_COUNT; attempt++) {
+    try {
+      // 呼叫 DD 模組的處理函數
+      const response = DD_processData(data);  // 假設 DD 模組提供了這個函數
+      return { success: true, responseCode: 200 };
+    } catch (error) {
+      WH_logDebug(`DD 模組處理失敗 (嘗試 ${attempt}/${WH_CONFIG.RETRY.MAX_COUNT}): ${error.toString()}`);
+      if (attempt === WH_CONFIG.RETRY.MAX_COUNT) {
+        return { error: "DD 模組處理失敗", responseCode: 500 };
       }
+      Utilities.sleep(WH_CONFIG.RETRY.DELAY_MS * attempt);
     }
-  } finally {
-    lock.releaseLock();
   }
-}
-
-// 8. 資料驗證
-function WH_validateDDData(data) {
-  return (
-    data &&
-    typeof data.user_id === 'string' &&
-    data.user_id.length > 0 &&
-    typeof data.timestamp === 'string' &&
-    !isNaN(new Date(data.timestamp)) &&
-    typeof data.subject_name === 'string' &&
-    data.subject_name.length > 0 &&
-    typeof data.amount === 'number' &&
-    data.amount > 0 &&
-    typeof data.source === 'string' &&
-    data.source === 'LINE'
-  );
 }
 
 // 9. 回應處理
@@ -256,14 +143,13 @@ function WH_handleResponses(responses) {
     return WH_createErrorResponse(errorResponse.error, errorResponse.responseCode);
   }
 
-  const successCount = responses.filter(r => r.success).length;
   return WH_createSuccessResponse({
     processed: responses.length,
-    success: successCount
+    success: responses.filter(r => r.success).length
   });
 }
 
-// 10. 輔助函數
+// 10. 回應生成函數
 function WH_createErrorResponse(error, code) {
   return ContentService.createTextOutput(JSON.stringify({
     error: error,
@@ -285,23 +171,22 @@ function WH_createSuccessResponse(data = {}) {
 function WH_logDebug(message) {
   if (WH_CONFIG.DEBUG) {
     Logger.log(message);
-    
-    // 寫入到試算表作為日誌
-    try {
-      const logSheet = SpreadsheetApp.openById(WH_CONFIG.SHEET.ID)
-        .getSheetByName("Logs") || WH_createLogSheet();
-      
-      logSheet.appendRow([
-        new Date(),
-        message
-      ]);
-    } catch (error) {
-      Logger.log("日誌記錄失敗: " + error.toString());
-    }
+    WH_writeToLogSheet(message);
   }
 }
 
-// 12. 建立日誌工作表
+// 12. 日誌寫入試算表
+function WH_writeToLogSheet(message) {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(WH_CONFIG.SHEET.ID);
+    const logSheet = spreadsheet.getSheetByName("Logs") || WH_createLogSheet();
+    logSheet.appendRow([new Date(), message]);
+  } catch (error) {
+    Logger.log("寫入日誌失敗: " + error.toString());
+  }
+}
+
+// 13. 建立日誌工作表
 function WH_createLogSheet() {
   const spreadsheet = SpreadsheetApp.openById(WH_CONFIG.SHEET.ID);
   const logSheet = spreadsheet.insertSheet("Logs");
