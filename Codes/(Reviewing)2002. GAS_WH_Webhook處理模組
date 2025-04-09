@@ -1,14 +1,16 @@
-// WH_Webhook 模組_v1_2_2_Claude
+// WH_Webhook 模組_v1_4_0_Gemini
+
+// 由 Gemini AI 協助升級與修正，更正 doPost 函數名稱，並處理 X-Line-Signature 讀取錯誤，添加詳細 Header 日誌
 
 // 1. 配置參數
 const WH_CONFIG = {
   DEBUG: true,
   SHEET: {
-    ID: "1TSn-X-8B_PDUseZZPbbc0AhK55E80DBXJqkPRtStOUY",
+    ID: "1TSn-X-8B_PDUseZZPbbc0AhK55E80DBXJqkPRtStOUY", // 請替換為您的試算表 ID
     NAME: "Master Ledger_v1.0_20250327"
   },
   LINE: {
-    CHANNEL_SECRET: "e137bf2f264e9b6b80f46350fb1605b6"
+    CHANNEL_SECRET: "e137bf2f264e9b6b80f46350fb1605b6" // 請替換為您的 LINE Channel Secret
   },
   RETRY: {
     MAX_COUNT: 3,
@@ -16,26 +18,54 @@ const WH_CONFIG = {
   }
 };
 
-// 2. 初始函數
-function WH_doPost(e) {
+// 2. 初始函數 (已更名為 doPost 以處理 POST 請求)
+function doPost(e) {
   WH_logDebug("收到 Webhook 請求");
-  
+  Logger.log("doPost 接收到的完整 e 物件: " + JSON.stringify(e)); // 添加這行
+  Logger.log("doPost 開始"); // 添加日誌
+
   try {
     if (!WH_validateRequestStructure(e)) {
-      return WH_createErrorResponse("無效的請求格式", 400);
+      const response = WH_createErrorResponse("無效的請求格式", 400);
+      Logger.log(`doPost 返回 (無效結構): ${JSON.stringify(response.getContent())}, Code: ${response.getResponseCode()}`);
+      return response;
     }
 
-    const postData = JSON.parse(e.postData.contents);
-    
+    let postData;
+    try {
+      postData = JSON.parse(e.postData.contents);
+    } catch (error) {
+      WH_logDebug("JSON 解析錯誤: " + error.toString());
+      const response = WH_createErrorResponse("無效的請求格式", 400);
+      Logger.log(`doPost 返回 (JSON 解析錯誤): ${JSON.stringify(response.getContent())}, Code: ${response.getResponseCode()}`);
+      return response;
+    }
+
+    if (!postData || !Array.isArray(postData.events)) {
+      WH_logDebug("請求內容中缺少或無效的 events 陣列");
+      const response = WH_createErrorResponse("無效的事件結構", 400);
+      Logger.log(`doPost 返回 (無效事件結構): ${JSON.stringify(response.getContent())}, Code: ${response.getResponseCode()}`);
+      return response;
+    }
+
     if (!WH_validateRequest(e)) {
-      return WH_createErrorResponse("無效的請求來源", 403);
+      const response = WH_createErrorResponse("無效的請求來源", 403);
+      Logger.log(`doPost 返回 (驗證失敗): ${JSON.stringify(response.getContent())}, Code: ${response.getResponseCode()}`);
+      return response;
     }
 
     const responses = postData.events.map(event => WH_processEvent(event));
-    return WH_handleResponses(responses);
+    const finalResponse = WH_handleResponses(responses);
+    Logger.log(`doPost 返回 (正常處理): ${JSON.stringify(finalResponse.getContent())}, Code: ${finalResponse.getResponseCode()}`);
+    return finalResponse;
+
   } catch (error) {
     WH_logDebug("請求處理錯誤: " + error.toString());
-    return WH_createErrorResponse("請求處理失敗: " + error.message, 500);
+    const response = WH_createErrorResponse("請求處理失敗: " + error.message, 500);
+    Logger.log(`doPost 返回 (錯誤): ${JSON.stringify(response.getContent())}, Code: ${response.getResponseCode()}`);
+    return response;
+  } finally {
+    Logger.log("doPost 結束"); // 添加日誌
   }
 }
 
@@ -46,19 +76,21 @@ function WH_validateRequestStructure(e) {
 
 // 4. LINE 簽章驗證
 function WH_validateRequest(e) {
-  const signature = e.headers["X-Line-Signature"];
-  
+  WH_logDebug("收到的完整 e.headers: " + JSON.stringify(e.headers)); // 添加這行
+
+  const signature = e.headers && e.headers["X-Line-Signature"];
+
   if (!signature) {
-    WH_logDebug("缺少 LINE 簽章");
+    WH_logDebug("缺少或無法讀取 LINE 簽章");
     return false;
   }
-  
+
   const payload = e.postData.contents;
   if (!payload) {
     WH_logDebug("缺少請求內容");
     return false;
   }
-  
+
   try {
     const hash = Utilities.computeHmacSha256Signature(payload, WH_CONFIG.LINE.CHANNEL_SECRET);
     const base64Hash = Utilities.base64Encode(hash);
@@ -79,6 +111,9 @@ function WH_processEvent(event) {
     switch(event.type) {
       case 'message':
         return WH_processMessageEvent(event);
+      case 'follow':
+        WH_logDebug("收到 follow 事件，目前未實作具體處理。");
+        return { success: true, responseCode: 200 }; // 暫時返回成功
       default:
         return { error: "不支援的事件類型", responseCode: 400 };
     }
@@ -120,7 +155,7 @@ function WH_forwardToDDModule(data) {
   for (let attempt = 1; attempt <= WH_CONFIG.RETRY.MAX_COUNT; attempt++) {
     try {
       // 呼叫 DD 模組的處理函數
-      const response = DD_processData(data);  // 假設 DD 模組提供了這個函數
+      const response = DD_processData(data);   // 假設 DD 模組提供了這個函數
       return { success: true, responseCode: 200 };
     } catch (error) {
       WH_logDebug(`DD 模組處理失敗 (嘗試 ${attempt}/${WH_CONFIG.RETRY.MAX_COUNT}): ${error.toString()}`);
@@ -134,19 +169,31 @@ function WH_forwardToDDModule(data) {
 
 // 9. 回應處理
 function WH_handleResponses(responses) {
-  if (!Array.isArray(responses) || responses.length === 0) {
-    return WH_createErrorResponse("沒有事件需要處理", 400);
+  if (!Array.isArray(responses)) {
+    return WH_createErrorResponse("無效的回應格式", 500);
   }
 
-  const errorResponse = responses.find(r => r.error);
-  if (errorResponse) {
-    return WH_createErrorResponse(errorResponse.error, errorResponse.responseCode);
+  const errors = responses.filter(r => r.error);
+  const successes = responses.filter(r => r.success);
+  const processedCount = responses.length;
+  const successCount = successes.length;
+  const errorCount = errors.length;
+  const firstError = errors[0] || {}; // 避免 errors 為空時取 [0] 報錯
+
+  if (processedCount === 0) {
+    return WH_createSuccessResponse({ processed: 0, success: 0 });
   }
 
-  return WH_createSuccessResponse({
-    processed: responses.length,
-    success: responses.filter(r => r.success).length
-  });
+  if (errorCount > 0) {
+    // 如果有錯誤，且第一個錯誤的回應碼是 500，則返回 500
+    if (firstError.responseCode === 500) {
+      return WH_createErrorResponse(`處理 ${processedCount} 個事件，其中 ${errorCount} 個失敗: ${firstError.error}`, 500);
+    }
+    // 否則，返回包含錯誤信息的 400 錯誤
+    return WH_createErrorResponse(`處理 ${processedCount} 個事件，其中 ${errorCount} 個失敗: ${firstError.error}`, 400);
+  }
+
+  return WH_createSuccessResponse({ processed: processedCount, success: successCount });
 }
 
 // 10. 回應生成函數
@@ -164,7 +211,8 @@ function WH_createSuccessResponse(data = {}) {
     success: true,
     ...data
   }))
-  .setMimeType(ContentService.MimeType.JSON);
+  .setMimeType(ContentService.MimeType.JSON)
+  .setResponseCode(200); // 已修改：添加設定回應碼為 200
 }
 
 // 11. 日誌記錄
@@ -179,17 +227,17 @@ function WH_logDebug(message) {
 function WH_writeToLogSheet(message) {
   try {
     const spreadsheet = SpreadsheetApp.openById(WH_CONFIG.SHEET.ID);
-    const logSheet = spreadsheet.getSheetByName("Logs") || WH_createLogSheet();
-    logSheet.appendRow([new Date(), message]);
+    const logSheet = spreadsheet.getSheetByName("Logs");
+    if (logSheet) {
+      logSheet.appendRow([new Date(), message]);
+    } else {
+      Logger.log("警告：找不到名為 'Logs' 的工作表，無法寫入日誌。");
+    }
   } catch (error) {
     Logger.log("寫入日誌失敗: " + error.toString());
   }
 }
 
-// 13. 建立日誌工作表
-function WH_createLogSheet() {
-  const spreadsheet = SpreadsheetApp.openById(WH_CONFIG.SHEET.ID);
-  const logSheet = spreadsheet.insertSheet("Logs");
-  logSheet.getRange("A1:B1").setValues([["時間", "訊息"]]);
-  return logSheet;
-}
+// 13. (已刪除)
+
+// Gemini AI 協助升級與修正，更正 doPost 函數名稱，並處理 X-Line-Signature 讀取錯誤，添加詳細 Header 日誌
