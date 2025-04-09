@@ -1,1 +1,218 @@
+測試計畫 - 資料分配模組 (DD) v1.0
 
+1. 測試範圍
+
+本測試計畫針對資料分配模組（DD）進行單元測試和整合測試，確保其核心功能正常運作，包含：
+
+1.1 基本功能測試
+
+數據分類：測試 DD 是否能根據預定義的規則正確分類不同屬性的數據。
+數據分發：測試 DD 是否能將分類後的數據正確分發到指定的目標模組處理函數。
+錯誤處理：測試 DD 在數據分類或分發失敗時的錯誤記錄機制。
+新增科目處理：測試 DD 能否自動將使用者新增的科目新增至科目代碼表。
+1.2 同義詞學習功能測試
+
+科目名稱提取：測試 DD 能否從輸入數據中提取科目名稱。
+同義詞學習觸發：測試當輸入的科目名稱無法直接對應到科目代碼時，DD 是否能正確觸發學習機制（記錄需學習的科目）。
+同義詞新增：測試 DD_learnSubjectSynonym 函數能否根據使用者選擇更新科目代碼表的同義詞。
+科目代碼查詢：測試 DD_getSubjectCode 函數能否正確查詢科目代碼，包括比對同義詞。
+1.3 配置與規則測試
+
+動態配置規則 (模擬)：由於 GAS 環境下動態配置規則通常依賴外部儲存（如試算表），本測試將模擬讀取配置的行為，驗證分類和分發邏輯是否能根據模擬
+規則運作。
+2. 測試案例（Test Cases）
+
+TC-001 測試數據分類 - 記帳類別
+
+測試目標：驗證 DD 能正確將標記為記帳類型的數據分類到 BK 模組。
+輸入值：{ type: '記帳', amount: 100 }
+驗證點：DD_classifyData 函數的返回值。
+預期結果：BK。
+TC-002 測試數據分類 - 詢問管理類別
+
+測試目標：驗證 DD 能正確將標記為詢問類型的數據分類到 QM 模組。
+輸入值：{ type: '詢問', question: '問題內容' }
+驗證點：DD_classifyData 函數的返回值。
+預期結果：QM。
+TC-003 測試數據分類 - 排程管理類別
+
+測試目標：驗證 DD 能正確將標記為排程類型的數據分類到 SM 模組。
+輸入值：{ type: '排程', task: '安排會議' }
+驗證點：DD_classifyData 函數的返回值。
+預期結果：SM。
+TC-004 測試數據分類 - AI 分析類別
+
+測試目標：驗證 DD 能正確將標記為 AI 分析類型的數據分類到 AA 模組。
+輸入值：{ type: '分析', data: '分析數據' }
+驗證點：DD_classifyData 函數的返回值。
+預期結果：AA。
+TC-005 測試數據分類 - 帳號管理類別
+
+測試目標：驗證 DD 能正確將標記為帳號管理類型的數據分類到 AM 模組。
+輸入值：{ type: '帳號', action: '新增使用者' }
+驗證點：DD_classifyData 函數的返回值。
+預期結果：AM。
+TC-006 測試數據分類 - 未知類別
+
+測試目標：驗證 DD 對於未知類型的數據是否返回預設或其他處理方式。
+輸入值：{ type: '未知', data: '一些數據' }
+驗證點：DD_classifyData 函數的返回值。
+預期結果：預期值 (例如 'default')。
+TC-007 測試數據分發 - 分發到 BK 模組
+
+測試目標：驗證 DD 能正確將分類為 BK 的數據分發到 DD_processForBK 函數。
+輸入值：{ type: '記帳', amount: 100 }
+驗證點：模擬的 DD_processForBK 是否被調用並接收到輸入的數據。
+預期結果：模擬的 DD_processForBK 被調用並接收到 { type: '記帳', amount: 100 }。
+TC-008 測試數據分發 - 分發到 QM 模組
+
+測試目標：驗證 DD 能正確將分類為 QM 的數據分發到 DD_processForQM 函數。
+輸入值：{ type: '詢問', question: '問題內容' }
+驗證點：模擬的 DD_processForQM 是否被調用並接收到輸入的數據。
+預期結果：模擬的 DD_processForQM 被調用並接收到 { type: '詢問', question: '問題內容' }。
+TC-009 測試數據分發 - 分發到 SM 模組
+
+測試目標：驗證 DD 能正確將分類為 SM 的數據分發到 DD_processForSM 函數。
+輸入值：{ type: '排程', task: '安排會議' }
+驗證點：模擬的 DD_processForSM 是否被調用並接收到輸入的數據。
+預期結果：模擬的 DD_processForSM 被調用並接收到 { type: '排程', task: '安排會議' }。
+TC-010 測試數據分發 - 分發到 AA 模組
+
+測試目標：驗證 DD 能正確將分類為 AA 的數據分發到 DD_processForAA 函數。
+輸入值：{ type: '分析', data: '分析數據' }
+驗證點：模擬的 DD_processForAA 是否被調用並接收到輸入的數據。
+預期結果：模擬的 DD_processForAA 被調用並接收到 { type: '分析', data: '分析數據' }。
+TC-011 測試數據分發 - 分發到 AM 模組
+
+測試目標：驗證 DD 能正確將分類為 AM 的數據分發到 DD_processForAM 函數。
+輸入值：{ type: '帳號', action: '新增使用者' }
+驗證點：模擬的 DD_processForAM 是否被調用並接收到輸入的數據。
+預期結果：模擬的 DD_processForAM 被調用並接收到 { type: '帳號', action: '新增使用者' }。
+TC-012 測試數據分發 - 未知目標模組
+
+測試目標：驗證當分類結果對應到未知模組時，DD 是否記錄錯誤。
+輸入值：{ type: '特殊', data: '一些特殊數據' } (假設 DD_classifyData 返回 'SPECIAL')
+驗證點：DD_logError 是否被調用，錯誤訊息是否包含 "未知的目標模組: SPECIAL"。
+預期結果：DD_logError 被調用，錯誤訊息包含 "未知的目標模組: SPECIAL"。
+TC-013 測試錯誤處理 - DD_distributeData 內部錯誤
+
+測試目標：驗證當 DD_classifyData 拋出錯誤時，DD_distributeData 能否捕獲並記錄錯誤。
+輸入值：模擬導致 DD_classifyData 拋出錯誤的數據。
+驗證點：DD_logError 是否被調用，錯誤訊息是否包含 DD_classifyData 拋出的錯誤信息。
+預期結果：DD_logError 被調用，錯誤訊息包含 DD_classifyData 的錯誤信息。
+TC-014 測試科目名稱提取 (模擬 - Rich menu 指令)
+
+測試目標：驗證 DD_processSubjectNameForLearning 能從 Rich menu 指令相關的輸入中提取科目名稱。
+輸入值：例如 { command: '記帳', subject: '餐費', amount: 100 } (需要根據實際 Rich menu 指令結構模擬)
+驗證點：DD_processSubjectNameForLearning 函數被調用，並使用提取的科目名稱查詢科目代碼表。
+預期結果：DD_processSubjectNameForLearning 執行，並調用 DD_getSubjectCode 查詢 '餐費'。
+TC-015 測試科目名稱提取 (模擬 - 使用者 message)
+
+測試目標：驗證 DD_processSubjectNameForLearning 能從使用者 message 中提取科目名稱。
+輸入值：例如使用者輸入的訊息字串 "我花了 50 元在咖啡上"。
+驗證點：DD_processSubjectNameForLearning 函數被調用，並嘗試從訊息中提取可能的科目名稱（可能需要更複雜的邏輯，這裡簡化為直接測試提取特定字詞）。
+預期結果：DD_processSubjectNameForLearning 執行，並調用 DD_getSubjectCode 查詢 '咖啡' (假設提取邏輯能識別)。
+TC-016 測試同義詞學習觸發 - 科目名稱未找到
+
+測試目標：驗證當輸入的科目名稱在科目代碼表中找不到時，DD_processSubjectNameForLearning 會觸發學習機制（記錄錯誤）。
+輸入值：一個科目代碼表中不存在的科目名稱，例如 "新型支出"。
+驗證點：DD_logError 函數是否被調用，且錯誤訊息包含 "需要學習的科目名稱: "新型支出""。
+預期結果：DD_logError 被調用，錯誤訊息包含 "需要學習的科目名稱: "新型支出""。
+TC-017 測試科目代碼查詢 - 找到直接匹配的科目名稱
+
+測試目標：驗證 DD_getSubjectCode 能正確找到直接匹配的科目名稱及其代碼。
+輸入值：科目代碼表中存在的科目名稱，例如 "薪資"。
+驗證點：DD_getSubjectCode 返回一個包含 "薪資" 和對應代碼的物件。
+預期結果：DD_getSubjectCode 返回 { name: '薪資', code: 'SA001' } (假設代碼為 SA001)。
+TC-018 測試科目代碼查詢 - 找到同義詞匹配的科目名稱
+
+測試目標：驗證 DD_getSubjectCode 能正確找到與同義詞匹配的科目名稱及其代碼。
+輸入值：科目代碼表中某個科目的同義詞，例如 "伙食費" (假設 "餐費" 的同義詞包含 "伙食費")。
+驗證點：DD_getSubjectCode 返回與 "餐費" 對應的科目名稱和代碼的物件。
+預期結果：DD_getSubjectCode 返回 { name: '餐費', code: 'FE002' } (假設代碼為 FE002)。
+TC-019 測試科目代碼查詢 - 科目名稱未找到
+
+測試目標：驗證 DD_getSubjectCode 在找不到科目名稱時返回 null。
+輸入值：科目代碼表中不存在的科目名稱，例如 "宇宙能量"。
+驗證點：DD_getSubjectCode 的返回值是否為 null。
+預期結果：null。
+TC-020 測試新增科目 - 成功新增
+
+測試目標：驗證 DD_addNewSubject 能成功將新的科目名稱和代碼寫入（模擬）科目代碼表。
+輸入值：newSubjectName = '獎金', newSubjectCode = 'BO001'。
+驗證點：模擬的科目代碼表是否新增了一行包含 '獎金', 'BO001', '' 的數據。
+預期結果：模擬的科目代碼表已更新。
+TC-021 測試自動學習同義詞 - 新增同義詞
+
+測試目標：驗證 DD_learnSubjectSynonym 能將新的同義詞新增到現有科目代碼的同義詞欄位。
+輸入值：subjectName = '飲料費', subjectCode = 'FE002' (假設 'FE002' 對應 '餐費'，且同義詞欄位原本為空)。
+驗證點：模擬的科目代碼表中，代碼為 'FE002' 的記錄的同義詞欄位是否包含 '飲料費'。
+預期結果：代碼為 'FE002' 的記錄的同義詞欄位包含 '飲料費'。
+TC-022 測試自動學習同義詞 - 同義詞已存在
+
+測試目標：驗證 DD_learnSubjectSynonym 在嘗試新增已存在的同義詞時不進行重複新增。
+輸入值：subjectName = '伙食費', subjectCode = 'FE002' (假設 'FE002' 對應 '餐費'，且同義詞欄位已包含 '伙食費')。
+驗證點：模擬的科目代碼表中，代碼為 'FE002' 的記錄的同義詞欄位內容沒有改變。
+預期結果：代碼為 'FE002' 的記錄的同義詞欄位內容保持不變。
+TC-023 測試自動學習同義詞 - 科目名稱與主要名稱相同
+
+測試目標：驗證 DD_learnSubjectSynonym 在嘗試將與主要科目名稱相同的字串新增為同義詞時不進行操作。
+輸入值：subjectName = '餐費', subjectCode = 'FE002' (假設 'FE002' 對應 '餐費')。
+驗證點：模擬的科目代碼表中，代碼為 'FE002' 的記錄的同義詞欄位內容沒有改變。
+預期結果：代碼為 'FE002' 的記錄的同義詞欄位內容保持不變。
+TC-024 測試自動學習同義詞 - 找不到指定代碼
+
+測試目標：驗證 DD_learnSubjectSynonym 在找不到指定科目代碼時不進行任何操作。
+輸入值：subjectName = '其他費用', subjectCode = 'XX999' (假設 'XX999' 在科目代碼表中不存在)。
+驗證點：模擬的科目代碼表沒有任何改變，也沒有錯誤記錄。
+預期結果：模擬的科目代碼表保持不變。
+3. 測試方法
+
+3.1 單元測試（Unit Test）
+
+透過編寫 GAS 測試腳本，針對 DD 模組中的每個函數（例如 DD_classifyData, DD_dispatchData, DD_getSubjectCode, DD_learnSubjectSynonym, 
+DD_addNewSubject 等）進行獨立測試。
+使用模擬（Mocking）技術模擬外部依賴，例如目標模組的處理函數 (DD_processForBK, DD_processForQM, DD_processForSM, DD_processForAA, 
+DD_processForAM) 和 Google Sheets 的操作 (SpreadsheetApp.getActiveSpreadsheet().getSheetByName(), Sheet.appendRow(), Range.getValue(), 
+Range.setValue() 等)。
+測試腳本將會設定不同的輸入值，並驗證函數的返回值、調用的其他函數以及可能的副作用（例如記錄錯誤）。
+斷言（Assertions）將用於判斷實際結果是否符合預期結果。
+3.2 整合測試（Integration Test）
+
+測試 DD_distributeData 函數，驗證其在接收到數據後，能否正確地調用 DD_classifyData 和 DD_dispatchData，並最終觸發目標模組的處理函數（透過模擬驗
+證）。
+測試同義詞學習的流程，驗證 DD_processSubjectNameForLearning 能否正確調用 DD_getSubjectCode 並在需要時觸發學習（透過模擬 
+DD_learnSubjectSynonym）。
+測試新增科目的流程，驗證 DD_addNewSubject 能否正確更新（模擬）科目代碼表。
+3.3 錯誤測試（Error Handling Test）
+
+專門設計測試案例來觸發 DD 模組中的錯誤處理邏輯，例如提供無效的輸入數據、模擬外部依賴失敗等。
+驗證在錯誤發生時，DD_logError 函數是否被正確調用，並且錯誤訊息包含有用的資訊。
+
+4. 測試環境設定
+4.1 GAS 環境
+
+專案 ID：[請填寫您的 Google Apps Script 專案 ID]
+試算表 ID：[請填寫您用於測試的 Google Sheet 試算表 ID。這個試算表可以用於模擬配置規則和科目代碼表。]
+權限設定：需要對上述試算表具有編輯者權限的 Google 帳戶來執行測試腳本。
+
+4.2 模擬設定
+
+目標模組處理函數模擬： 在測試腳本中，需要創建模擬函數來替代實際的目標模組處理函數 (DD_processForBK, DD_processForQM, DD_processForSM, 
+DD_processForAA, DD_processForAM)。這些模擬函數的主要目的是驗證它們是否被 DD_dispatchData 函數在正確的條件下調用，並接收到預期的數據。
+這些模擬函數可以簡單地記錄被調用的情況和接收到的數據，而不需要實現實際的業務邏輯。
+科目代碼表模擬： 為了測試 DD_getSubjectCode, DD_addNewSubject, 和 DD_learnSubjectSynonym 等與科目代碼表交互的函數，可以在測試腳本中建
+立一個 JavaScript 物件或二維陣列來模擬科目代碼表的結構和數據。這個模擬數據應包含測試案例中需要的科目名稱、代碼和同義詞。測試腳本中的模擬函
+數將會操作這個模擬數據，而不是直接讀寫 Google Sheet。
+
+配置規則模擬： 類似地，如果 DD_classifyData 或 DD_dispatchData 的邏輯依賴於外部配置規則，可以在測試腳本中建立 JavaScript 物件或陣列來模
+擬這些規則。測試腳本中的模擬函數將會讀取這些模擬規則來判斷數據的分類和分發目標。
+
+4.3 測試工具
+
+Google Apps Script 編輯器：用於編寫和執行測試腳本。
+Google Apps Script 內建的 Logger 和 console.log：用於記錄測試執行過程中的信息和斷言結果。
+測試腳本中使用的斷言庫（可以自行編寫簡單的斷言函數，例如 assertEqual(actual, expected, message)）。
+4.4 其他依賴模擬
+如果資料分配模組還依賴於其他外部服務或模組，需要在測試腳本中為這些依賴創建適當的模擬，以確保測試的隔離性和可控性。例如，如果需要模擬 Webhook 
+模組的輸入，可以在測試腳本中創建符合預期格式的模擬事件物件。
