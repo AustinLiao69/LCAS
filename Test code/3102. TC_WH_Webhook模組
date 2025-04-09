@@ -1,0 +1,344 @@
+// WH_Testcode_1_4_7_gemini
+
+// ** 注意：此測試程式碼需要與被測試的 WH_Webhook 模組在同一個 Google Apps Script 專案中 **
+
+// 在 WH_Test_code.gs 中模擬 ContentService
+const MockContentService = {
+  MimeType: ContentService.MimeType, // 可以保留真實的 MimeType 常數
+
+  createTextOutput: function(content) {
+    return {
+      content: content,
+      mimeType: null,
+      responseCode: null,
+      setContent: function(c) { this.content = c; return this; },
+      setMimeType: function(type) { this.mimeType = type; return this; },
+      setResponseCode: function(code) { this.responseCode = code; return this; },
+      getContent: function() { return this.content; },
+      getMimeType: function() { return this.mimeType; },
+      getResponseCode: function() { return this.responseCode; }
+    };
+  }
+};
+
+// 在測試中替換全局的 ContentService
+this.ContentService = MockContentService;
+
+const WH_TEST_CONFIG = {
+  DEBUG: true, // 開啟除錯日誌
+  LINE_CHANNEL_SECRET: "e137bf2f264e9b6b80f46350fb1605b6", // 直接使用配置中的 Secret，避免 Utilities 錯誤
+  MOCK_DD_SUCCESS: { success: true, responseCode: 200 },
+  MOCK_DD_FAILURE: { error: "模擬 DD 模組處理失敗", responseCode: 500 },
+  MOCK_DD_NO_RESPONSE: () => { throw new Error("模擬 DD 失敗"); },
+};
+
+let testResults = []; // 用於記錄測試結果
+
+// 輔助函數：模擬 ContentService 的 TextOutput 物件
+function MockTextOutput(content, mimeType, responseCode) {
+  this.content = content;
+  this.mimeType = mimeType;
+  this.responseCode = responseCode;
+  this.getContent = () => this.content;
+  this.getMimeType = () => this.mimeType;
+  this.getResponseCode = () => this.responseCode;
+  this.setMimeType = (type) => { this.mimeType = type; return this; };
+  this.setResponseCode = (code) => { this.responseCode = code; return this; };
+}
+
+// 輔助函數：建立模擬的 doPost 事件物件
+function WH_createMockEvent(payload, signature) {
+  return {
+    postData: {
+      contents: JSON.stringify(payload)
+    },
+    headers: {
+      'X-Line-Signature': signature || WH_generateSignature(JSON.stringify(payload))
+    }
+  };
+}
+
+// 輔助函數：模擬產生 LINE 簽章 (直接使用 Utilities，若錯誤持續存在，可能需要進一步排查 GAS 環境)
+function WH_generateSignature(payload) {
+  try {
+    const hash = Utilities.computeHmacSha256Signature(payload, WH_TEST_CONFIG.LINE_CHANNEL_SECRET);
+    return Utilities.base64Encode(hash);
+  } catch (error) {
+    Logger.log(`[測試] 產生簽章錯誤: ${error}`);
+    return ""; // 發生錯誤時返回空簽章，測試將會失敗
+  }
+}
+
+// 輔助函數：驗證是否為無效簽章的回應
+function WH_assertInvalidSignatureResponse(testCase, response) {
+  Logger.log(`[測試 - ${testCase}] WH_doPost 回傳 (typeof): ${typeof response}`);
+  Logger.log(`[測試 - ${testCase}] WH_doPost 回傳 (keys): ${JSON.stringify(Object.keys(response))}`);
+  const responseCode = response && typeof response.getResponseCode === 'function' ? response.getResponseCode() : null;
+  const result = responseCode === 403 ? "通過" : "未通過";
+  WH_logTestResult(testCase, `預期回應碼 403 (無效簽章), 實際 ${responseCode}`, result);
+}
+
+// 輔助函數：模擬 DD_processData 函數 (用於測試轉發邏輯)
+let mock_DD_processData_response = WH_TEST_CONFIG.MOCK_DD_SUCCESS;
+function DD_processData(data) {
+  if (WH_TEST_CONFIG.DEBUG) {
+    Logger.log(`[測試] 模擬 DD_processData 接收到數據: ${JSON.stringify(data)}`);
+  }
+  return mock_DD_processData_response;
+}
+
+// TC-001 測試 Webhook 事件接收:
+function WH_runtest_TC001() {
+  const testCase = "TC-001 測試 Webhook 事件接收";
+  const payload = {
+    events: [{
+      type: "message",
+      source: {"userId": "UtestUser001"},
+      timestamp: 1617123456789,
+      message: {"type": "text", "text": "測試訊息"}
+    }]
+  };
+  const mockEvent = WH_createMockEvent(payload);
+  WH_assertResponseCode(testCase, WH_doPost(mockEvent), 200);
+}
+
+// TC-002 測試請求驗證 - 使用完全錯誤的簽章:
+function WH_runtest_TC002() {
+  const testCase = "TC-002 測試請求驗證 - 完全錯誤簽章";
+  const payload = { events: [{ type: "message", source: { userId: "Utest" }, timestamp: Date.now(), message: { type: "text", text: "test invalid sig - wrong sig" } }] };
+  const wrongSignature = "abcdefg1234567890hijklmnop";
+  const mockEventWrongSig = WH_createMockEvent(payload, wrongSignature);
+  WH_assertResponseCode(testCase, WH_doPost(mockEventWrongSig), 403);
+}
+
+// TC-003 測試請求驗證 - 使用長度相同但內容不同的簽章:
+function WH_runtest_TC003() {
+  const testCase = "TC-003 測試請求驗證 - 長度相同但內容不同的簽章";
+  const payload = { events: [{ type: "message", source: { userId: "Utest" }, timestamp: Date.now(), message: { type: "text", text: "test invalid sig - different length" } }] };
+  const differentLengthSignature = "a".repeat(WH_generateSignature(JSON.stringify(payload)).length);
+  const mockEventDifferentLengthSig = WH_createMockEvent(payload, differentLengthSignature);
+  WH_assertResponseCode(testCase, WH_doPost(mockEventDifferentLengthSig), 403);
+}
+
+// TC-004 測試請求驗證 - 使用部分正確但被篡改的簽章:
+function WH_runtest_TC004() {
+  const testCase = "TC-004 測試請求驗證 - 部分篡改簽章";
+  const payload = { events: [{ type: "message", source: { userId: "Utest" }, timestamp: Date.now(), message: { type: "text", text: "test invalid sig - tampered" } }] };
+  const originalSignature = WH_generateSignature(JSON.stringify(payload));
+  const tamperedSignature = "Z" + originalSignature.slice(1);
+  const mockEventTamperedSig = WH_createMockEvent(payload, tamperedSignature);
+  WH_assertResponseCode(testCase, WH_doPost(mockEventTamperedSig), 403);
+}
+
+// TC-005 測試訊息轉發:
+function WH_runtest_TC005() {
+  const testCase = "TC-005 測試訊息轉發";
+  const payload = {
+    events: [{
+      type: "message",
+      source: {"userId": "UtestUser003"},
+      timestamp: Date.now(),
+      message: {"type": "text", "text": "測試轉發訊息"}
+    }]
+  };
+  const mockEvent = WH_createMockEvent(payload);
+  mock_DD_processData_response = WH_TEST_CONFIG.MOCK_DD_SUCCESS;
+  WH_assertResponseCode(testCase, WH_doPost(mockEvent), 200);
+  // 您可能需要添加更詳細的斷言來檢查轉發是否成功，例如檢查日誌或模擬 DD 的行為
+}
+
+// TC-006 測試 DD 無回應時的行為:
+function WH_runtest_TC006() {
+  const testCase = "TC-006 測試 DD 無回應時的行為";
+  const payload = {
+    events: [{
+      type: "message",
+      source: {"userId": "UtestUser004"},
+      timestamp: Date.now(),
+      message: {"type": "text", "text": "測試 DD 無回應"}
+    }]
+  };
+  const mockEvent = WH_createMockEvent(payload);
+  const originalDDProcessData = this.DD_processData; // 使用 this 替代 global
+  this.DD_processData = WH_TEST_CONFIG.MOCK_DD_NO_RESPONSE; // 使用 this 替代 global
+  const originalMaxRetry = WH_CONFIG.RETRY.MAX_COUNT;
+  WH_CONFIG.RETRY.MAX_COUNT = 1; // 暫時縮短重試次數以便快速測試
+
+  let response;
+  try {
+    response = WH_doPost(mockEvent);
+    Logger.log("TC-006 Response: " + JSON.stringify(response)); // 增加日誌
+  } finally {
+    WH_CONFIG.RETRY.MAX_COUNT = originalMaxRetry; // 恢復原始重試次數
+    this.DD_processData = originalDDProcessData; // 使用 this 替代 global
+  }
+
+  const actualCode = response && typeof response.getResponseCode === 'function' ? response.getResponseCode() : null;
+  const actualContent = response ? response.getContent() : null;
+  const result = actualCode === 500 && actualContent && actualContent.includes("DD 模組處理失敗") ? "通過" : "未通過";
+  WH_logTestResult(testCase, `預期回應碼 500 並包含 DD 失敗訊息, 實際回應碼 ${actualCode}, 內容: ${actualContent}`, result);
+}
+
+// TC-007 測試解析錯誤 (無效事件結構):
+function WH_runtest_TC007() {
+  const testCase = "TC-007 測試解析錯誤 (無效事件結構)";
+  const invalidPayload = "{ \"events\": [ { \"type\": \"message\", \"timestamp\": \"invalid\" } ] }"; // timestamp 格式錯誤
+  const mockEvent = WH_createMockEvent(invalidPayload);
+  WH_assertResponseCodeAndContent(testCase, WH_doPost(mockEvent), 400, "無效的事件結構");
+}
+
+// TC-008 測試解析錯誤 (格式錯誤 JSON):
+function WH_runtest_TC008() {
+  const testCase = "TC-008 測試解析錯誤 (格式錯誤 JSON)";
+  const malformedJSON = "{ \"events\": [ { \"type\": \"message\" "; // JSON 格式錯誤
+  const mockEventMalformed = WH_createMockEvent(malformedJSON);
+  WH_assertResponseCodeAndContent(testCase, WH_doPost(mockEventMalformed), 400, "無效的請求格式");
+}
+
+// TC-009 測試正常回應:
+function WH_runtest_TC009() {
+  const testCase = "TC-009 測試正常回應";
+  const payload = {
+    events: [{
+      type: "message",
+      source: {"userId": "UtestUser006"},
+      timestamp: Date.now(),
+      message: {"type": "text", "text": "正常訊息"}
+    }]
+  };
+  const mockEvent = WH_createMockEvent(payload);
+  mock_DD_processData_response = WH_TEST_CONFIG.MOCK_DD_SUCCESS;
+  WH_assertResponseCode(testCase, WH_doPost(mockEvent), 200);
+}
+
+// TC-010 測試 LINE 訊息回覆機制:
+function WH_runtest_TC010() {
+  const testCase = "TC-010 測試 LINE 訊息回覆機制";
+  WH_logTestResult(testCase, "跳過：目前 WH 模組不包含主動回覆功能", "跳過");
+}
+
+// TC-011 測試 LINE 回覆錯誤處理:
+function WH_runtest_TC011() {
+  const testCase = "TC-011 測試 LINE 回覆錯誤處理";
+  WH_logTestResult(testCase, "跳過：目前 WH 模組不包含主動回覆功能", "跳過");
+}
+
+// TC-012 測試多個事件:
+function WH_runtest_TC012() {
+  const testCase = "TC-012 測試多個事件";
+  const payload = {
+    events: [
+      { type: "message", source: { userId: "UtestUser10A" }, timestamp: Date.now(), message: { type: "text", text: "測試訊息 1" } },
+      { type: "follow", source: { userId: "UtestUser10B" }, timestamp: Date.now() }
+    ]
+  };
+  const mockEvent = WH_createMockEvent(payload);
+  mock_DD_processData_response = WH_TEST_CONFIG.MOCK_DD_SUCCESS;
+  WH_assertResponseCode(testCase, WH_doPost(mockEvent), 200);
+  // 您可能需要添加更詳細的斷言來檢查是否處理了所有事件
+}
+
+// TC-013 測試空事件列表:
+function WH_runtest_TC013() {
+  const testCase = "TC-013 測試空事件列表";
+  const payload = { events: [] };
+  const mockEvent = WH_createMockEvent(payload);
+  WH_assertResponseCode(testCase, WH_doPost(mockEvent), 200);
+}
+
+// 測試輔助函數 (請確保這些函數也存在於您的測試程式碼中)
+function WH_assertResponseCode(testCase, response, expectedCode) {
+  const actualCode = response && typeof response.getResponseCode === 'function' ? response.getResponseCode() : null;
+  const result = actualCode === expectedCode ? "通過" : "未通過";
+  WH_logTestResult(testCase, `預期回應碼 ${expectedCode}, 實際 ${actualCode}`, result);
+}
+
+function WH_assertResponseCodeAndContent(testCase, response, expectedCode, expectedContent) {
+  const actualCode = response && typeof response.getResponseCode === 'function' ? response.getResponseCode() : null;
+  const actualContent = response ? response.getContent() : null; // <--- 已修改
+  const contentResult = actualContent && actualContent.includes(expectedContent);
+  const result = actualCode === expectedCode && contentResult ? "通過" : "未通過";
+  WH_logTestResult(testCase, `預期回應碼 ${expectedCode} 且內容包含 '${expectedContent}', 實際回應碼 ${actualCode}, 內容: ${actualContent}`, result);
+}
+
+function WH_logTestResult(testCase, message, result) {
+  Logger.log(`${testCase}: ${result} - ${message}`);
+}
+
+function WH_createMockEvent(payload, customSignature) {
+  const payloadString = typeof payload === 'object' ? JSON.stringify(payload) : payload;
+  const signature = customSignature || WH_generateSignature(payloadString);
+  return {
+    postData: {
+      contents: payloadString
+    },
+    headers: {
+      'X-Line-Signature': signature
+    }
+  };
+}
+
+function WH_generateSignature(payload) {
+  const secret = WH_CONFIG.LINE.CHANNEL_SECRET;
+  const hash = Utilities.computeHmacSha256Signature(payload, secret);
+  return Utilities.base64Encode(hash);
+}
+
+// 測試函數，用於執行所有測試案例
+function WH_runAllTests() {
+  console.log('開始執行 Webhook 模組測試...');
+  console.log('====================================');
+
+  testResults = []; // 重置測試結果
+
+  WH_runtest_TC001();
+  WH_runtest_TC002();
+  WH_runtest_TC003();
+  WH_runtest_TC004();
+  WH_runtest_TC005();
+  WH_runtest_TC006();
+  WH_runtest_TC007();
+  WH_runtest_TC008();
+  WH_runtest_TC009();
+  WH_runtest_TC010();
+  WH_runtest_TC011();
+  WH_runtest_TC012();
+  WH_runtest_TC013();
+
+  console.log('====================================');
+  console.log('測試執行完成');
+
+  // 顯示測試總結
+  WH_displayTestSummary();
+}
+
+// 記錄單個測試結果
+function WH_logTestResult(testCase, message, status) {
+  const resultEntry = `${testCase} - ${message}: ${status}`;
+  console.log(resultEntry);
+  testResults.push({ testCase, message, status });
+}
+
+
+// 顯示測試總結
+function WH_displayTestSummary() {
+  const totalExpectedTests = 13; // 明確定義預期的總測試案例數
+  const passedTests = testResults.filter(result => result.status === "通過").length;
+  const failedTests = testResults.filter(result => result.status === "未通過").length;
+  const skippedTests = testResults.filter(result => result.status === "跳過").length;
+
+  console.log('\n測試總結:');
+  testResults.forEach(result => console.log(`${result.testCase}: ${result.status} - ${result.message}`));
+  console.log(`\n總測試案例數：${totalExpectedTests}`); // 使用明確定義的總數
+  console.log(`通過測試數：${passedTests}`);
+  console.log(`失敗測試數：${failedTests}`);
+  console.log(`跳過測試數：${skippedTests}`);
+
+  if (failedTests > 0) {
+    console.warn('警告：有測試案例未通過！');
+  } else if (skippedTests === totalExpectedTests) {
+    console.info('提示：所有測試案例都被跳過。');
+  } else {
+    console.log('所有相關測試案例均通過！');
+  }
+}
