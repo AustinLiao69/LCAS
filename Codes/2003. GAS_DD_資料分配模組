@@ -1,1 +1,379 @@
+/**
+ * @file 資料分配模組
+ * @version 1.0.4_Gemini
+ * @module 資料分配模組
+ * @description 根據預定義的規則將數據分配到不同的工作表或數據庫表中，並能從 Google Sheet 擷取科目代碼，支援多個同義詞欄位。
+ */
 
+/**
+ * 模組名稱前綴，避免命名衝突
+ */
+const DD_MODULE_PREFIX = 'DD_';
+
+/**
+ * 1. 定義常數，用於儲存目標模組的名稱
+ */
+const DD_TARGET_MODULE_BK = 'BK';
+const DD_TARGET_MODULE_QM = 'QM';
+const DD_TARGET_MODULE_SM = 'SM';
+const DD_TARGET_MODULE_AA = 'AA';
+const DD_TARGET_MODULE_AM = 'AM';
+
+/**
+ * 2. 定義儲存分配規則的工作表名稱 (假設規則儲存在 Google Sheet 中)
+ */
+const DD_CONFIG_SHEET_NAME = '997. 資料分配規則'; // 根據實際情況修改
+const DD_CONFIG_RULE_COLUMN = 1; // 規則所在的欄位 (假設第一欄)
+const DD_CONFIG_TARGET_COLUMN = 2; // 目標模組所在的欄位 (假設第二欄)
+
+/**
+ * 3. 定義儲存科目代碼表的工作表名稱
+ */
+const DD_SUBJECT_CODE_SHEET_NAME = '00. 科目代碼';
+const DD_SUBJECT_CODE_MAJOR_CODE_COLUMN = 1;   // 大項代碼
+const DD_SUBJECT_CODE_MAJOR_NAME_COLUMN = 2;   // 大項名稱
+const DD_SUBJECT_CODE_SUB_CODE_COLUMN = 3;     // 子項代碼
+const DD_SUBJECT_CODE_SUB_NAME_COLUMN = 4;     // 子項名稱
+const DD_SUBJECT_CODE_SYNONYM_START_COLUMN = 5; // 同義詞開始的欄位
+
+/**
+ * 4. 定義錯誤日誌的工作表名稱
+ */
+const DD_ERROR_LOG_SHEET_NAME = '資料分配錯誤日誌'; // 需要根據實際情況修改
+
+/**
+ * 5. 主要的資料分配函數
+ * @param {object} data - 需要分配的原始數據
+ * @param {string} source - 數據來源 (例如: 'Rich menu', '使用者訊息')
+ */
+function DD_distributeData(data, source) {
+  console.log(`DD_distributeData_debug: 開始處理來自 ${source} 的數據: ${JSON.stringify(data)}`);
+  try {
+    // 6. 根據數據屬性進行分類
+    const category = DD_classifyData(data, source);
+    console.log(`DD_distributeData_debug: 數據分類結果: ${category}`);
+
+    // 7. 根據分類結果分發數據
+    DD_dispatchData(data, category);
+
+  } catch (error) {
+    console.error(`DD_distributeData_error: 處理數據時發生錯誤: ${error}`);
+    DD_logError(`處理來自 ${source} 的數據時發生錯誤: ${error}`, data);
+    // 8. 可以在這裡加入重試機制 (目前省略)
+  }
+}
+
+/**
+ * 9. 數據分類函數
+ * @param {object} data - 需要分類的數據
+ * @param {string} source - 數據來源
+ * @returns {string} - 數據的類別 (用於決定分發到哪個模組)
+ */
+function DD_classifyData(data, source) {
+  console.log(`DD_classifyData_debug: 開始分類來自 ${source} 的數據: ${JSON.stringify(data)}`);
+  let category = 'default';
+
+  // 規則 1：來自 Rich menu 的 "記帳" 按鈕
+  if (source === 'Rich menu' && data && (data.action === '記帳' || data.postback === '記帳')) {
+    category = DD_TARGET_MODULE_BK;
+  }
+  // 規則 2：來自 使用者訊息 (需要後續在 processForBK 中判斷)
+  else if (source === '使用者訊息' && data && data.text) {
+    category = DD_TARGET_MODULE_BK; // 先分類到 BK，具體意圖在 processForBK 中判斷
+  }
+
+  console.log(`DD_classifyData_debug: 數據分類結果為: ${category}`);
+  return category;
+}
+
+/**
+ * 11. 數據分發函數
+ * @param {object} data - 需要分發的數據
+ * @param {string} targetModule - 目標模組的名稱
+ */
+function DD_dispatchData(data, targetModule) {
+  console.log(`DD_dispatchData_debug: 開始將數據分發到模組: ${targetModule}, 數據內容: ${JSON.stringify(data)}`);
+  switch (targetModule) {
+    case DD_TARGET_MODULE_BK:
+      DD_processForBK(data); // 處理記帳模組的數據
+      break;
+    case DD_TARGET_MODULE_QM:
+      DD_processForQM(data);
+      break;
+    case DD_TARGET_MODULE_SM:
+      DD_processForSM(data);
+      break;
+    case DD_TARGET_MODULE_AA:
+      DD_processForAA(data);
+      break;
+    case DD_TARGET_MODULE_AM:
+      DD_processForAM(data);
+      break;
+    default:
+      console.warn(`DD_dispatchData_warn: 未知的目標模組: ${targetModule}`);
+      DD_logError(`未知的目標模組: ${targetModule}`, data);
+  }
+  console.log(`DD_dispatchData_debug: 數據已分發到模組: ${targetModule}`);
+}
+
+/**
+ * 13. 處理記帳模組 (BK) 的數據 (支援自然語意記帳並詢問確認)
+ * @param {object} data - 需要處理的數據 (包含 text 和 replyToken)
+ */
+function DD_processForBK(data) {
+  console.log(`DD_processForBK_debug: 處理記帳模組數據: ${JSON.stringify(data)}`);
+  if (data && data.text && data.replyToken) {
+    const text = data.text.trim().toLowerCase();
+    const amountMatch = text.match(/\d+(\.\d+)?/);
+    if (amountMatch) {
+      const amount = parseFloat(amountMatch[0]);
+      const description = text.replace(amountMatch[0], '').trim();
+      let recordType = 'expense'; // 預設為支出
+      let confirmationText = `您是要記錄支出 "${description} ${amount} 元" 嗎？\n\n請回覆「是」確認，或回覆「收入」進行更正。`;
+
+      const incomeKeywords = ['收入', '進帳', '賺', '收到', '入帳', '薪資', '獎金', '利息'];
+      for (const keyword of incomeKeywords) {
+        if (text.includes(keyword)) {
+          recordType = 'income';
+          confirmationText = `您是要記錄收入 "${description} ${amount} 元" 嗎？\n\n請回覆「是」確認，或回覆「支出」進行更正。`;
+          break;
+        }
+      }
+
+      const confirmationMessage = {
+        type: 'text',
+        text: confirmationText
+      };
+      // **請在這裡加入您的 LINE Messaging API 回覆函數 (例如 replyMessage)**
+      // replyMessage(data.replyToken, confirmationMessage);
+
+      console.log(`DD_processForBK_debug: 發送確認訊息給使用者: ${confirmationText}`);
+      // **後續需要處理使用者回覆的邏輯 (例如在另一個函數中處理 LINE 的 MessageEvent)**
+      // **根據使用者的回覆 ("是" 或 "收入"/"支出") 來最終記錄或提示重輸**
+
+    } else {
+      const errorMessage = {
+        type: 'text',
+        text: `抱歉，我無法理解您的記帳內容。\n請嘗試輸入包含金額的訊息，例如：「咖啡 50」或「收入 薪資 30000」。`
+      };
+      // **請在這裡加入您的 LINE Messaging API 回覆函數**
+      // replyMessage(data.replyToken, errorMessage);
+      DD_logError(`無法從使用者輸入中提取到有效記帳資訊`, data);
+    }
+  } else if (data && data.action === '記帳' || data.postback === '記帳') {
+    // 處理來自 Rich Menu 的 "記帳" 按鈕 (這裡可以引導使用者輸入)
+    const instructionMessage = {
+      type: 'text',
+      text: `請輸入您要記錄的內容，例如：「咖啡 50」或「收入 薪資 30000」。`
+    };
+    // **請在這裡加入您的 LINE Messaging API 回覆函數**
+    // replyMessage(data.replyToken, instructionMessage);
+    console.log(`DD_processForBK_debug: 回覆 Rich Menu 記帳引導訊息`);
+  }
+}
+
+/**
+ * 14. 處理詢問管理模組 (QM) 的數據 (需要根據 QM 模組的 API 或資料結構實現)
+ * @param {object} data - 需要處理的數據
+ */
+function DD_processForQM(data) {
+  console.log(`DD_processForQM_debug: 處理詢問管理模組數據: ${JSON.stringify(data)}`);
+  // 這裡需要實作將數據寫入 QM 相關的工作表或數據庫的邏輯
+}
+
+/**
+ * 15. 處理排程模組 (SM) 的數據 (需要根據 SM 模組的 API 或資料結構實現)
+ * @param {object} data - 需要處理的數據
+ */
+function DD_processForSM(data) {
+  console.log(`DD_processForSM_debug: 處理排程模組數據: ${JSON.stringify(data)}`);
+  // 這裡需要實作將數據寫入 SM 相關的工作表或數據庫的邏輯
+}
+
+/**
+ * 16. 處理 AI 分析模組 (AA) 的數據 (需要根據 AA 模組的 API 或資料結構實現)
+ * @param {object} data - 需要處理的數據
+ */
+function DD_processForAA(data) {
+  console.log(`DD_processForAA_debug: 處理 AI 分析模組數據: ${JSON.stringify(data)}`);
+  // 這裡需要實作將數據傳送給 AA 模組的邏輯
+}
+
+/**
+ * 17. 處理帳號管理模組 (AM) 的數據 (需要根據 AM 模組的 API 或資料結構實現)
+ * @param {object} data - 需要處理的數據
+ */
+function DD_processForAM(data) {
+  console.log(`DD_processForAM_debug: 處理帳號管理模組數據: ${JSON.stringify(data)}`);
+  // 這裡需要實作將數據寫入 AM 相關的工作表或數據庫的邏輯
+}
+
+/**
+ * 18. 記錄錯誤信息的函數
+ * @param {string} errorMessage - 錯誤訊息
+ * @param {object} data - 導致錯誤的數據 (可選)
+ */
+function DD_logError(errorMessage, data = null) {
+  console.error(`DD_logError: ${errorMessage}, 相關數據: ${JSON.stringify(data)}`);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const errorLogSheet = ss.getSheetByName(DD_ERROR_LOG_SHEET_NAME) || ss.insertSheet(DD_ERROR_LOG_SHEET_NAME);
+    errorLogSheet.appendRow([new Date(), errorMessage, JSON.stringify(data)]);
+  } catch (logError) {
+    console.error(`DD_logError_error: 記錄錯誤日誌時發生錯誤: ${logError}`);
+  }
+}
+
+/**
+ * 19. 從輸入中提取科目名稱並觸發同義詞學習 (目前未在此版本中使用，但保留)
+ * @param {string} input - 用戶輸入或相關數據，可能包含科目名稱
+ */
+function DD_processSubjectNameForLearning(input) {
+  console.log(`DD_processSubjectNameForLearning_debug: 接收到輸入: ${input}`);
+  // ... (程式碼省略)
+}
+
+/**
+ * 22. 查詢科目代碼表的函數 (支援同義詞)
+ * @param {string} subjectName - 要查詢的科目名稱
+ * @returns {object|null} - 如果找到，返回包含 {majorCode, majorName, subCode, subName} 的物件，否則返回 null
+ */
+function DD_getSubjectCode(subjectName) {
+  console.log(`DD_getSubjectCode_debug: 查詢科目名稱: ${subjectName}`);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const subjectCodeSheet = ss.getSheetByName(DD_SUBJECT_CODE_SHEET_NAME);
+    if (!subjectCodeSheet) {
+      console.warn(`DD_getSubjectCode_warn: 找不到工作表: ${DD_SUBJECT_CODE_SHEET_NAME}`);
+      return null;
+    }
+    const lastRow = subjectCodeSheet.getLastRow();
+    const values = subjectCodeSheet.getRange(1, 1, lastRow, subjectCodeSheet.getLastColumn()).getValues();
+
+    for (let i = 0; i < values.length; i++) {
+      const majorCode = values[i][DD_SUBJECT_CODE_MAJOR_CODE_COLUMN - 1];
+      const majorName = values[i][DD_SUBJECT_CODE_MAJOR_NAME_COLUMN - 1];
+      const subCode = values[i][DD_SUBJECT_CODE_SUB_CODE_COLUMN - 1];
+      const subName = values[i][DD_SUBJECT_CODE_SUB_NAME_COLUMN - 1];
+      const synonyms = [];
+      // 讀取所有同義詞欄位 (從 E 欄開始)
+      for (let j = DD_SUBJECT_CODE_SYNONYM_START_COLUMN - 1; j < values[i].length; j++) {
+        const synonym = values[i][j];
+          if (synonym) {
+            synonyms.push(synonym.trim());
+          }
+        }
+
+        if (subName === subjectName || majorName === subjectName || synonyms.includes(subjectName)) {
+          console.log(`DD_getSubjectCode_debug: 找到科目 "${subjectName}"，大項代碼: ${majorCode}, 大項名稱: ${majorName}, 子項代碼: ${subCode}, 子項名稱: ${subName}`);
+          return { majorCode: majorCode, majorName: majorName, subCode: subCode, subName: subName };
+        }
+      }
+      console.log(`DD_getSubjectCode_debug: 未找到科目名稱: ${subjectName}`);
+      return null;
+
+    } catch (error) {
+      console.error(`DD_getSubjectCode_error: 查詢科目代碼表時發生錯誤: ${error}`);
+      DD_logError(`查詢科目代碼表時發生錯誤: ${error}`);
+      return null;
+    }
+  }
+
+  /**
+   * 23. 處理使用者新增科目的函數 (假設只新增子項名稱和子項代碼)
+   * @param {string} newSubjectName - 使用者新增的科目名稱
+   * @param {string} newSubjectCode - 使用者為新增科目指定的代碼
+   */
+  function DD_addNewSubject(newSubjectName, newSubjectCode) {
+    console.log(`DD_addNewSubject_debug: 新增科目名稱: ${newSubjectName}, 代碼: ${newSubjectCode}`);
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const subjectCodeSheet = ss.getSheetByName(DD_SUBJECT_CODE_SHEET_NAME) || ss.insertSheet(DD_SUBJECT_CODE_SHEET_NAME);
+      const newRow = ['', '', newSubjectCode, newSubjectName]; // 根據欄位順序調整
+      subjectCodeSheet.appendRow(newRow);
+      console.log(`DD_addNewSubject_debug: 科目 "${newSubjectName}" 已成功新增`);
+    } catch (error) {
+      console.error(`DD_addNewSubject_error: 新增科目時發生錯誤: ${error}`);
+      DD_logError(`新增科目 "${newSubjectName}" 時發生錯誤: ${error}`, { name: newSubjectName, code: newSubjectCode });
+    }
+  }
+
+  /**
+   * 24. 自動學習與更新同義詞的函數 (支援同義詞)
+   * @param {string} subjectName - 用戶輸入的科目名稱
+   * @param {string} targetSubName - 用戶選擇的對應子項名稱
+   */
+  function DD_learnSubjectSynonym(subjectName, targetSubName) {
+    console.log(`DD_learnSubjectSynonym_debug: 開始學習同義詞: "${subjectName}" -> "${targetSubName}"`);
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const subjectCodeSheet = ss.getSheetByName(DD_SUBJECT_CODE_SHEET_NAME);
+      if (!subjectCodeSheet) {
+        console.warn(`DD_learnSubjectSynonym_warn: 找不到工作表: ${DD_SUBJECT_CODE_SHEET_NAME}`);
+        return;
+      }
+      const lastRow = subjectCodeSheet.getLastRow();
+      const values = subjectCodeSheet.getRange(1, 1, lastRow, subjectCodeSheet.getLastColumn()).getValues();
+
+      for (let i = 0; i < values.length; i++) {
+        const subName = values[i][DD_SUBJECT_CODE_SUB_NAME_COLUMN - 1];
+        let synonyms = [];
+        // 讀取現有的同義詞
+        for (let j = DD_SUBJECT_CODE_SYNONYM_START_COLUMN - 1; j < values[i].length; j++) {
+          const synonym = values[i][j];
+          if (synonym) {
+            synonyms.push(synonym.trim());
+          }
+        }
+
+        if (subName === targetSubName && !synonyms.includes(subjectName) && subName !== subjectName) {
+          synonyms.push(subjectName);
+          // 將更新後的同義詞寫回第一個同義詞欄位 (E 欄)
+          subjectCodeSheet.getRange(i + 1, DD_SUBJECT_CODE_SYNONYM_START_COLUMN).setValue(synonyms.filter(s => s !== '').join(', '));
+          console.log(`DD_learnSubjectSynonym_debug: 已將 "${subjectName}" 新增為 "${targetSubName}" 的同義詞`);
+          return;
+        } else if (subName === subjectName && subName === targetSubName) {
+          console.log(`DD_learnSubjectSynonym_debug: "${subjectName}" 已經是主要名稱，無需學習`);
+          return;
+        } else if (subName === targetSubName && synonyms.includes(subjectName)) {
+          console.log(`DD_learnSubjectSynonym_debug: "${subjectName}" 已經是 "${targetSubName}" 的同義詞`);
+          return;
+        }
+      }
+      console.log(`DD_learnSubjectSynonym_debug: 找不到子項名稱 "${targetSubName}" 可以新增同義詞 "${subjectName}"`);
+
+    } catch (error) {
+      console.error(`DD_learnSubjectSynonym_error: 學習同義詞時發生錯誤: ${error}`);
+      DD_logError(`學習同義詞 "${subjectName}" -> "${targetSubName}" 時發生錯誤: ${error}`);
+    }
+  }
+
+  // **測試程式碼範例 (需要另一個 GAS 檔案或在同一個檔案中)**
+  // function DD_testDistributeData() {
+  //   // 模擬來自 Rich menu 的數據
+  //   DD_distributeData({ type: '記帳', amount: 100 }, 'Rich menu');
+  //   DD_distributeData({ type: '詢問', question: '今天天氣如何？' }, 'Rich menu');
+  //
+  //   // 模擬來自 使用者 message 的數據
+  //   DD_distributeData({ text: '我要記一筆餐費 50 元' }, '使用者訊息');
+  // }
+  //
+  // function DD_testSubjectCode() {
+  //   const code1 = DD_getSubjectCode('薪資');
+  //   Logger.log(`薪資代碼: ${JSON.stringify(code1)}`);
+  //
+  //   const code2 = DD_getSubjectCode('伙食費');
+  //   Logger.log(`伙食費代碼: ${JSON.stringify(code2)}`);
+  //
+  //   const code3 = DD_getSubjectCode('不存在的科目');
+  //   Logger.log(`不存在的科目代碼: ${JSON.stringify(code3)}`);
+  // }
+  //
+  // function DD_testAddNewSubject() {
+  //   DD_addNewSubject('雜項支出', 'EX001');
+  // }
+  //
+  // function DD_testLearnSubjectSynonym() {
+  //   DD_learnSubjectSynonym('飲料', '餐費');
+  //   DD_learnSubjectSynonym('交通費', '交通'); // 假設有 '交通' 這個子項名稱
+  // }
