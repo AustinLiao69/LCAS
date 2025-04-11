@@ -52,115 +52,115 @@ TC-005 測試數據分類 - 帳號管理類別_P2
 驗證點：DD_classifyData 函數的返回值。
 預期結果：AM。
 
-TC-006 測試數據分類 - 未知類別
+TC-006 測試數據分類 - 未知類別_P1
 測試目標：驗證 DD 對於未知類型的數據是否返回預設或其他處理方式。
 輸入值：{ type: '未知', data: '一些數據' }
 驗證點：DD_classifyData 函數的返回值。
 預期結果：預期值 (例如 'default')。
 
-TC-007 測試數據分發 - 分發到 BK 模組
+TC-007 測試數據分發 - 分發到 BK 模組_P1
 測試目標：驗證 DD 能正確將分類為 BK 的數據分發到 DD_processForBK 函數。
 輸入值：{ type: '記帳', amount: 100 }
 驗證點：模擬的 DD_processForBK 是否被調用並接收到輸入的數據。
 預期結果：模擬的 DD_processForBK 被調用並接收到 { type: '記帳', amount: 100 }。
 
-TC-008 測試數據分發 - 分發到 QM 模組
+TC-008 測試數據分發 - 分發到 QM 模組_P2
 測試目標：驗證 DD 能正確將分類為 QM 的數據分發到 DD_processForQM 函數。
 輸入值：{ type: '詢問', question: '問題內容' }
 驗證點：模擬的 DD_processForQM 是否被調用並接收到輸入的數據。
 預期結果：模擬的 DD_processForQM 被調用並接收到 { type: '詢問', question: '問題內容' }。
 
-TC-009 測試數據分發 - 分發到 SM 模組
+TC-009 測試數據分發 - 分發到 SM 模組_P3
 測試目標：驗證 DD 能正確將分類為 SM 的數據分發到 DD_processForSM 函數。
 輸入值：{ type: '排程', task: '安排會議' }
 驗證點：模擬的 DD_processForSM 是否被調用並接收到輸入的數據。
 預期結果：模擬的 DD_processForSM 被調用並接收到 { type: '排程', task: '安排會議' }。
 
-TC-010 測試數據分發 - 分發到 AA 模組
+TC-010 測試數據分發 - 分發到 AA 模組_P3
 測試目標：驗證 DD 能正確將分類為 AA 的數據分發到 DD_processForAA 函數。
 輸入值：{ type: '分析', data: '分析數據' }
 驗證點：模擬的 DD_processForAA 是否被調用並接收到輸入的數據。
 預期結果：模擬的 DD_processForAA 被調用並接收到 { type: '分析', data: '分析數據' }。
 
-TC-011 測試數據分發 - 分發到 AM 模組
+TC-011 測試數據分發 - 分發到 AM 模組_P2
 測試目標：驗證 DD 能正確將分類為 AM 的數據分發到 DD_processForAM 函數。
 輸入值：{ type: '帳號', action: '新增使用者' }
 驗證點：模擬的 DD_processForAM 是否被調用並接收到輸入的數據。
 預期結果：模擬的 DD_processForAM 被調用並接收到 { type: '帳號', action: '新增使用者' }。
 
-TC-012 測試數據分發 - 未知目標模組
+TC-012 測試數據分發 - 未知目標模組_P1
 測試目標：驗證當分類結果對應到未知模組時，DD 是否記錄錯誤。
 輸入值：{ type: '特殊', data: '一些特殊數據' } (假設 DD_classifyData 返回 'SPECIAL')
 驗證點：DD_logError 是否被調用，錯誤訊息是否包含 "未知的目標模組: SPECIAL"。
 預期結果：DD_logError 被調用，錯誤訊息包含 "未知的目標模組: SPECIAL"。
 
-TC-013 測試錯誤處理 - DD_distributeData 內部錯誤
+TC-013 測試錯誤處理 - DD_distributeData 內部錯誤_P1
 測試目標：驗證當 DD_classifyData 拋出錯誤時，DD_distributeData 能否捕獲並記錄錯誤。
 輸入值：模擬導致 DD_classifyData 拋出錯誤的數據。
 驗證點：DD_logError 是否被調用，錯誤訊息是否包含 DD_classifyData 拋出的錯誤信息。
 預期結果：DD_logError 被調用，錯誤訊息包含 DD_classifyData 的錯誤信息。
 
-TC-014 測試科目名稱提取 (模擬 - Rich menu 指令)
+TC-014 測試科目名稱提取 (模擬 - Rich menu 指令)_P1
 測試目標：驗證 DD_processSubjectNameForLearning 能從 Rich menu 指令相關的輸入中提取科目名稱。
 輸入值：例如 { command: '記帳', subject: '餐費', amount: 100 } (需要根據實際 Rich menu 指令結構模擬)
 驗證點：DD_processSubjectNameForLearning 函數被調用，並使用提取的科目名稱查詢科目代碼表。
 預期結果：DD_processSubjectNameForLearning 執行，並調用 DD_getSubjectCode 查詢 '餐費'。
 
-TC-015 測試科目名稱提取 (模擬 - 使用者 message)
+TC-015 測試科目名稱提取 (模擬 - 使用者 message)_P1
 測試目標：驗證 DD_processSubjectNameForLearning 能從使用者 message 中提取科目名稱。
 輸入值：例如使用者輸入的訊息字串 "我花了 50 元在咖啡上"。
 驗證點：DD_processSubjectNameForLearning 函數被調用，並嘗試從訊息中提取可能的科目名稱（可能需要更複雜的邏輯，這裡簡化為直接測試提取特定字詞）。
 預期結果：DD_processSubjectNameForLearning 執行，並調用 DD_getSubjectCode 查詢 '咖啡' (假設提取邏輯能識別)。
 
-TC-016 測試同義詞學習觸發 - 科目名稱未找到
+TC-016 測試同義詞學習觸發 - 科目名稱未找到_P1
 測試目標：驗證當輸入的科目名稱在科目代碼表中找不到時，DD_processSubjectNameForLearning 會觸發學習機制（記錄錯誤）。
 輸入值：一個科目代碼表中不存在的科目名稱，例如 "新型支出"。
 驗證點：DD_logError 函數是否被調用，且錯誤訊息包含 "需要學習的科目名稱: "新型支出""。
 預期結果：DD_logError 被調用，錯誤訊息包含 "需要學習的科目名稱: "新型支出""。
 
-TC-017 測試科目代碼查詢 - 找到直接匹配的科目名稱
+TC-017 測試科目代碼查詢 - 找到直接匹配的科目名稱_P1
 測試目標：驗證 DD_getSubjectCode 能正確找到直接匹配的科目名稱及其代碼。
 輸入值：科目代碼表中存在的科目名稱，例如 "薪資"。
 驗證點：DD_getSubjectCode 返回一個包含 "薪資" 和對應代碼的物件。
 預期結果：DD_getSubjectCode 返回 { name: '薪資', code: 'SA001' } (假設代碼為 SA001)。
 
-TC-018 測試科目代碼查詢 - 找到同義詞匹配的科目名稱
+TC-018 測試科目代碼查詢 - 找到同義詞匹配的科目名稱_P1
 測試目標：驗證 DD_getSubjectCode 能正確找到與同義詞匹配的科目名稱及其代碼。
 輸入值：科目代碼表中某個科目的同義詞，例如 "伙食費" (假設 "餐費" 的同義詞包含 "伙食費")。
 驗證點：DD_getSubjectCode 返回與 "餐費" 對應的科目名稱和代碼的物件。
 預期結果：DD_getSubjectCode 返回 { name: '餐費', code: 'FE002' } (假設代碼為 FE002)。
 
-TC-019 測試科目代碼查詢 - 科目名稱未找到
+TC-019 測試科目代碼查詢 - 科目名稱未找到_P1
 測試目標：驗證 DD_getSubjectCode 在找不到科目名稱時返回 null。
 輸入值：科目代碼表中不存在的科目名稱，例如 "宇宙能量"。
 驗證點：DD_getSubjectCode 的返回值是否為 null。
 預期結果：null。
 
-TC-020 測試新增科目 - 成功新增
+TC-020 測試新增科目 - 成功新增_P2
 測試目標：驗證 DD_addNewSubject 能成功將新的科目名稱和代碼寫入（模擬）科目代碼表。
 輸入值：newSubjectName = '獎金', newSubjectCode = 'BO001'。
 驗證點：模擬的科目代碼表是否新增了一行包含 '獎金', 'BO001', '' 的數據。
 預期結果：模擬的科目代碼表已更新。
 
-TC-021 測試自動學習同義詞 - 新增同義詞
+TC-021 測試自動學習同義詞 - 新增同義詞_P1
 測試目標：驗證 DD_learnSubjectSynonym 能將新的同義詞新增到現有科目代碼的同義詞欄位。
 輸入值：subjectName = '飲料費', subjectCode = 'FE002' (假設 'FE002' 對應 '餐費'，且同義詞欄位原本為空)。
 驗證點：模擬的科目代碼表中，代碼為 'FE002' 的記錄的同義詞欄位是否包含 '飲料費'。
 預期結果：代碼為 'FE002' 的記錄的同義詞欄位包含 '飲料費'。
 
-TC-022 測試自動學習同義詞 - 同義詞已存在
+TC-022 測試自動學習同義詞 - 同義詞已存在_P1
 測試目標：驗證 DD_learnSubjectSynonym 在嘗試新增已存在的同義詞時不進行重複新增。
 輸入值：subjectName = '伙食費', subjectCode = 'FE002' (假設 'FE002' 對應 '餐費'，且同義詞欄位已包含 '伙食費')。
 驗證點：模擬的科目代碼表中，代碼為 'FE002' 的記錄的同義詞欄位內容沒有改變。
 預期結果：代碼為 'FE002' 的記錄的同義詞欄位內容保持不變。
 
-TC-023 測試自動學習同義詞 - 科目名稱與主要名稱相同
+TC-023 測試自動學習同義詞 - 科目名稱與主要名稱相同_P1
 測試目標：驗證 DD_learnSubjectSynonym 在嘗試將與主要科目名稱相同的字串新增為同義詞時不進行操作。
 輸入值：subjectName = '餐費', subjectCode = 'FE002' (假設 'FE002' 對應 '餐費')。
 驗證點：模擬的科目代碼表中，代碼為 'FE002' 的記錄的同義詞欄位內容沒有改變。
 預期結果：代碼為 'FE002' 的記錄的同義詞欄位內容保持不變。
 
-TC-024 測試自動學習同義詞 - 找不到指定代碼
+TC-024 測試自動學習同義詞 - 找不到指定代碼_P1
 測試目標：驗證 DD_learnSubjectSynonym 在找不到指定科目代碼時不進行任何操作。
 輸入值：subjectName = '其他費用', subjectCode = 'XX999' (假設 'XX999' 在科目代碼表中不存在)。
 驗證點：模擬的科目代碼表沒有任何改變，也沒有錯誤記錄。
