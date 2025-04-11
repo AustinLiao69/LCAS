@@ -1,4 +1,4 @@
-3100. Test code編寫代碼規則_v1.2
+0010. Test code編寫代碼規則_v1.2
 
 0. test code各function須加上測試該模組的簡寫在前綴, 如WH_runtestplan
 1. 各測試功能必須與Test plan的測試案例互相對照，必須在此功能後面顯示通過或未通過測試
