@@ -1,4 +1,4 @@
-LCAS編寫代碼規則_v1.3
+LCAS編寫代碼規則_v1.4
 編寫環境: GAS
 1. 要有代碼名稱及版本，例如：列印圖片_1_0_2
 2. 每次修正必定要升版，例如：列印圖片_1_0_3升版後變成列印圖片_1_0_4。
@@ -12,4 +12,13 @@ LCAS編寫代碼規則_v1.3
 9. 需記住使用者報錯的問題，不可再用
 10. 若是寫test code的話，需要在test code每個測試項目顯示通過測試，或未通過測試。
 11. 在GAS module編寫代碼時，為避免命名衝突須給所有引入函數加上該模組名稱前綴，例如：WH_CodeName
+12. 編寫代碼需有log, 欄位如下：
+    時間戳記 (Timestamp)	
+    模組名稱 (Module Name)
+    嚴重等級 (Severity)	
+    訊息 (Message)	
+    程式碼位置 (Location)	
+    錯誤訊息 (Error Message)	
+    使用者 ID (User ID)	
+    函數名稱(function)
 
