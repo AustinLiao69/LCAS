@@ -12,7 +12,7 @@ LCAS編寫代碼規則_v1.4
 9. 需記住使用者報錯的問題，不可再用
 10. 若是寫test code的話，需要在test code每個測試項目顯示通過測試，或未通過測試。
 11. 在GAS module編寫代碼時，為避免命名衝突須給所有引入函數加上該模組名稱前綴，例如：WH_CodeName
-12. 編寫代碼需有log, 欄位如下：
+12. 編寫代碼需填寫進資料庫之log, 欄位如下：
     時間戳記 (Timestamp)	
     模組名稱 (Module Name)
     嚴重等級 (Severity)	
